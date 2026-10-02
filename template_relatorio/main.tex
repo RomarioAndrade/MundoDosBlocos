@@ -1,0 +1,70 @@
+% =====================================================================
+% Fundamentos de Inteligencia Artificial -- 1o Trabalho
+% Mundo dos Blocos de Tamanho Variavel via SAT
+%
+% COMO USAR (Overleaf): New Project > Upload Project > envie o .zip.
+%   - Cada secao esta num arquivo separado em secoes/. Cada membro edita
+%     so o seu arquivo, e ninguem atrapalha o outro.
+%   - \afazer{...} marca em vermelho o que falta. Apague quando terminar.
+%   - \responsavel{Nome} indica quem escreve a secao.
+%   - Exemplos prontos (desenho de estado, tabela de passos, grafo de
+%     ordem parcial, saida de terminal): descomente a linha
+%     \input{secoes/00_exemplos_de_uso} no fim deste arquivo.
+% =====================================================================
+\documentclass[11pt,a4paper]{article}
+\input{preambulo}
+
+\marcadorestrue      % troque por \marcadoresfalse na versao final
+
+\title{Mundo dos Blocos de Tamanho Variável:\\
+Planejamento via SAT --- Situações 1, 2 e 3}
+\author{Equipe XX --- Fundamentos de Inteligência Artificial (IComp/UFAM)\\[4pt]
+Nome do Integrante 1 \and Nome do Integrante 2 \and Nome do Integrante 3}
+\date{Outubro de 2026}
+
+\begin{document}
+\maketitle
+
+% ---------- divisao de tarefas (apagar na versao final, se quiserem) ----------
+\ifmarcadores
+\begin{center}\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Seção & Arquivo & Responsável\\
+\midrule
+1. Introdução ao Problema & \texttt{secoes/01\_introducao.tex} & \\
+2. Descrição Formal & \texttt{secoes/02\_descricao\_formal.tex} & \\
+3. Codificação CNF & \texttt{secoes/03\_codificacao\_cnf.tex} & \\
+4. Exemplos dos 3 cenários & \texttt{secoes/04\_exemplos.tex} & \\
+5. Mapeamento: formal $\to$ código & \texttt{secoes/05\_mapeamento.tex} & \\
+6. Execução passo a passo & \texttt{secoes/06\_execucao.tex} & \\
+7. Interpretação da saída do SAT & \texttt{secoes/07\_interpretacao.tex} & \\
+\bottomrule
+\end{tabular}
+\end{center}
+\fi
+
+\tableofcontents
+\newpage
+
+\input{secoes/01_introducao}
+\input{secoes/02_descricao_formal}
+\input{secoes/03_codificacao_cnf}
+\input{secoes/04_exemplos}
+\input{secoes/05_mapeamento}
+\input{secoes/06_execucao}
+\input{secoes/07_interpretacao}
+
+% Exemplos de uso dos comandos (descomente para ver; nao entra na entrega):
+% \input{secoes/00_exemplos_de_uso}
+
+\begin{thebibliography}{9}
+\bibitem{rn} S. Russell, P. Norvig. \emph{Inteligência Artificial: Uma Abordagem
+  Moderna}. Capítulos de planejamento.
+\bibitem{bratko} I. Bratko. \emph{Prolog Programming for Artificial Intelligence}.
+  Capítulo de planejamento.
+\bibitem{manual} E. Mota. \emph{Manual de Resolução do Trabalho: Mundo dos Blocos de
+  Tamanho Variável via SAT Solver}. IComp/UFAM, 2026.
+% \bibitem{chave} Autor. \emph{Título}. Ano.
+\end{thebibliography}
+\end{document}
