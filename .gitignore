@@ -14,3 +14,4 @@ env/
 *.out
 *.synctex.gz
 *.toc
+*.log
