@@ -2,7 +2,7 @@
 
 Fundamentos de Inteligência Artificial (IComp/UFAM), 1º Trabalho
 
-Equipe X:
+Equipe 6:
 
 - Gabriel Menezes Rodrigues (gabriel.menezes@icomp.ufam.edu.br)
 - Luiz Felipe Gonzaga do Carmo (luiz.carmo@icomp.ufam.edu.br)
@@ -17,36 +17,35 @@ Resolvemos os três cenários do enunciado:
 | Situação 2 | S0 da Situação 2 | S5 | 5 ações |
 | Situação 3 | S0 da Situação 3 (igual ao S0 da Situação 1) | S7 | 6 ações |
 
-Como o enunciado permite, usamos um chatbot de IA (Claude) para ajudar a escrever o código
-Python e a montar os planos. Conferimos todos os planos passo a passo e também com o SAT.
-
-O relatório completo em LaTeX está em [`latex/main.tex`](latex/main.tex) (PDF: `latex/main.pdf`).
+O relatório completo em LaTeX está em [`Mundos dos Blocos Variavel.tex`](<Mundos dos Blocos Variavel.tex>)
+(PDF: [`Mundos dos Blocos Variavel.pdf`](<Mundos dos Blocos Variavel.pdf>)).
 
 ## Estrutura da pasta
 
 ```
-TrabalhoIA_MundoBloclos_equipe_X/
-├── README.md                  este arquivo (explicação em Markdown)
-├── bw2cnf_var.py              descrição formal -> CNF (.cnf + .map)
-├── interpretar.py             saída do miniSAT -> plano em português
-├── cenario1/                  Situação 1: S0 -> Sf4
-│   ├── trab01_blocos2SAT.cnf
-│   ├── trab01_blocos2SAT.map
-│   ├── resultado1.txt         saída do miniSAT
-│   ├── saida_gerador.txt      saída do bw2cnf_var.py
-│   ├── saida_minisat.txt      saída do miniSAT (estatísticas)
-│   └── plano_interpretado.txt saída do interpretar.py --verbose
-├── cenario2/                  Situação 2: S0 -> S5   (mesmos arquivos, resultado2.txt)
-├── cenario3/                  Situação 3: S0 -> S7   (mesmos arquivos, resultado3.txt)
-└── latex/
-    ├── main.tex               relatório (7 seções pedidas)
-    └── main.pdf
+MundoDosBlocos/
+├── README.md                          este arquivo (explicação em Markdown)
+├── Mundos dos Blocos Variavel.tex     relatório em LaTeX (7 seções pedidas)
+├── Mundos dos Blocos Variavel.pdf     relatório compilado
+└── TrabalhoIA_MundoBloclos_equipe_6/
+    ├── bw2cnf_var.py                  descrição formal -> CNF (.cnf + .map)
+    ├── interpretar.py                 saída do miniSAT -> plano em português
+    ├── cenario1/                      Situação 1: S0 -> Sf4
+    │   ├── trab01_blocos2SAT.cnf
+    │   ├── trab01_blocos2SAT.map
+    │   ├── resultado1.txt             saída do miniSAT
+    │   ├── saida_gerador.txt          saída do bw2cnf_var.py
+    │   ├── saida_minisat.txt          saída do miniSAT (estatísticas)
+    │   └── plano_interpretado.txt     saída do interpretar.py --verbose
+    ├── cenario2/                      Situação 2: S0 -> S5   (mesmos arquivos, resultado2.txt)
+    └── cenario3/                      Situação 3: S0 -> S7   (mesmos arquivos, resultado3.txt)
 ```
 
 ## Como executar
 
 ```bash
 sudo apt install minisat
+cd TrabalhoIA_MundoBloclos_equipe_6
 for N in 1 2 3; do
   cd cenario$N
   python3 ../bw2cnf_var.py --cenario $N         # gera .cnf e .map
