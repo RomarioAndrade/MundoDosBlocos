@@ -1,0 +1,78 @@
+PLANO ENCONTRADO (5 acoes):
+  1. t=0: mover bloco 'b' para CIMA de 'd' em p=3
+  2. t=1: mover bloco 'a' para a MESA em p=2
+  3. t=2: mover bloco 'c' para CIMA de 'd' em p=4
+  4. t=3: mover bloco 'a' para CIMA de 'c' em p=4
+  5. t=4: mover bloco 'b' para CIMA de 'c' em p=5
+
+EXECUCAO PASSO A PASSO:
+
+  t=0 (estado inicial)
+    nivel 1 | a b . . . .
+    nivel 0 | c c . d d d
+            +------------
+       slots  0 1 2 3 4 5
+
+  t=1  depois de: mover bloco 'b' para CIMA de 'd' em p=3
+    nivel 1 | a . . b . .
+    nivel 0 | c c . d d d
+            +------------
+       slots  0 1 2 3 4 5
+  a esta sobre: c
+  b esta sobre: d
+  c esta na MESA
+  d esta na MESA
+
+  t=2  depois de: mover bloco 'a' para a MESA em p=2
+    nivel 1 | . . . b . .
+    nivel 0 | c c a d d d
+            +------------
+       slots  0 1 2 3 4 5
+  a esta na MESA
+  b esta sobre: d
+  c esta na MESA
+  d esta na MESA
+
+  t=3  depois de: mover bloco 'c' para CIMA de 'd' em p=4
+    nivel 1 | . . . b c c
+    nivel 0 | . . a d d d
+            +------------
+       slots  0 1 2 3 4 5
+  a esta na MESA
+  b esta sobre: d
+  c esta sobre: d
+  d esta na MESA
+
+  t=4  depois de: mover bloco 'a' para CIMA de 'c' em p=4
+    nivel 2 | . . . . a .
+    nivel 1 | . . . b c c
+    nivel 0 | . . . d d d
+            +------------
+       slots  0 1 2 3 4 5
+  a esta sobre: c
+  b esta sobre: d
+  c esta sobre: d
+  d esta na MESA
+
+  t=5  depois de: mover bloco 'b' para CIMA de 'c' em p=5
+    nivel 2 | . . . . a b
+    nivel 1 | . . . . c c
+    nivel 0 | . . . d d d
+            +------------
+       slots  0 1 2 3 4 5
+  a esta sobre: c
+  b esta sobre: c
+  c esta sobre: d
+  d esta na MESA
+
+ESTADO FINAL (t=5):
+  a: ponto inicial p=4, nivel l=2
+  b: ponto inicial p=5, nivel l=2
+  c: ponto inicial p=4, nivel l=1
+  d: ponto inicial p=3, nivel l=0
+
+RELACOES 'on' em t=5:
+  a esta sobre: c
+  b esta sobre: c
+  c esta sobre: d
+  d esta na MESA

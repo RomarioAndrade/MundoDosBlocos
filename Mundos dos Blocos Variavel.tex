@@ -1,0 +1,1326 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage{lmodern}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
+\usepackage{booktabs,tabularx,array}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{float}
+\usepackage{caption}
+\usepackage[hidelinks]{hyperref}
+\setlength{\emergencystretch}{3em}
+
+\definecolor{cora}{RGB}{140,90,255}
+\definecolor{corb}{RGB}{255,240,0}
+\definecolor{corc}{RGB}{0,170,255}
+\definecolor{cord}{RGB}{235,30,30}
+
+\lstset{basicstyle=\ttfamily\footnotesize,frame=single,breaklines=true,
+  columns=fullflexible,keepspaces=true,backgroundcolor=\color{black!3},
+  rulecolor=\color{black!30}}
+
+% ---------- desenho de estados ----------
+\newcommand{\mesa}{%
+  \draw[line width=0.7pt] (0,0) -- (3,0);
+  \foreach \i in {0,...,6}{\draw (\i*0.5,0) -- (\i*0.5,-0.07);
+    \node[below,inner sep=1pt,font=\tiny] at (\i*0.5,-0.07) {\i};}}
+% \bl{ponto p}{nivel l}{comprimento}{nome}
+\newcommand{\bl}[4]{%
+  \filldraw[fill=cor#4,draw=black!70] (#1*0.5,#2*0.5) rectangle ++(#3*0.5,0.5);
+  \node[font=\small] at (#1*0.5+#3*0.25,#2*0.5+0.25) {\textit{#4}};}
+\newcommand{\rot}[1]{\node[font=\small] at (1.5,1.35) {#1};}
+
+\newcommand{\Szero}{\bl{0}{0}{2}{c}\bl{3}{0}{1}{a}\bl{5}{0}{1}{b}\bl{3}{1}{3}{d}}
+\newcommand{\Sum}{\bl{0}{0}{2}{c}\bl{3}{0}{1}{a}\bl{5}{0}{1}{b}\bl{0}{1}{3}{d}}
+\newcommand{\Sdois}{\bl{0}{0}{2}{c}\bl{0}{1}{3}{d}\bl{5}{0}{1}{b}\bl{5}{1}{1}{a}}
+\newcommand{\Stres}{\bl{0}{0}{2}{c}\bl{2}{0}{3}{d}\bl{5}{0}{1}{b}\bl{5}{1}{1}{a}}
+\newcommand{\Sfq}{\bl{0}{0}{2}{c}\bl{2}{0}{3}{d}\bl{5}{0}{1}{b}\bl{0}{1}{1}{a}}
+\newcommand{\rotA}[1]{\node[font=\small] at (1.5,1.85) {#1};}
+% Situacao 2
+\newcommand{\Tzero}{\bl{0}{0}{2}{c}\bl{3}{0}{3}{d}\bl{0}{1}{1}{a}\bl{1}{1}{1}{b}}
+\newcommand{\Tum}{\bl{0}{0}{2}{c}\bl{2}{0}{1}{b}\bl{3}{0}{3}{d}\bl{0}{1}{1}{a}}
+\newcommand{\Tdois}{\bl{0}{0}{2}{c}\bl{2}{0}{1}{b}\bl{3}{0}{3}{d}\bl{2}{1}{1}{a}}
+\newcommand{\Ttres}{\bl{2}{0}{1}{b}\bl{3}{0}{3}{d}\bl{2}{1}{1}{a}\bl{4}{1}{2}{c}}
+\newcommand{\Tquatro}{\bl{2}{0}{1}{b}\bl{3}{0}{3}{d}\bl{4}{1}{2}{c}\bl{4}{2}{1}{a}}
+\newcommand{\Tcinco}{\bl{3}{0}{3}{d}\bl{4}{1}{2}{c}\bl{4}{2}{1}{a}\bl{5}{2}{1}{b}}
+% Situacao 3
+\newcommand{\Ucinco}{\bl{0}{0}{2}{c}\bl{2}{0}{3}{d}\bl{0}{1}{1}{a}\bl{1}{1}{1}{b}}
+\newcommand{\Usete}{\bl{0}{0}{2}{c}\bl{3}{0}{3}{d}\bl{0}{1}{1}{a}\bl{1}{1}{1}{b}}
+
+\newcommand{\clr}{\mathit{clr}}
+\newcommand{\at}{\mathit{at}}
+\newcommand{\lev}{\mathit{lev}}
+\newcommand{\cov}{\mathit{cov}}
+\newcommand{\livre}{\mathit{livre}}
+\newcommand{\esp}{\mathit{esp}}
+\newcommand{\on}{\mathit{on}}
+\newcommand{\mv}{\mathit{move}}
+\newcommand{\spn}{\mathit{span}}
+\newcommand{\ov}{\mathit{overlap}}
+\newcommand{\mesaT}{\mathsf{T}}
+
+\title{Mundo dos Blocos de Tamanho Variável:\\
+Planejamento com SAT nas Situações 1, 2 e 3}
+\author{Fundamentos de Inteligência Artificial (IComp/UFAM)\\[1.5ex]
+\normalsize Gabriel Menezes Rodrigues (\texttt{gabriel.menezes@icomp.ufam.edu.br})\\
+\normalsize Luiz Felipe Gonzaga do Carmo (\texttt{luiz.carmo@icomp.ufam.edu.br})\\
+\normalsize Joshua Tadeu Bastos Pereira (\texttt{joshua.pereira@icomp.ufam.edu.br})\\
+\normalsize Romário Roberto de Pádua Andrade (\texttt{romario.andrade@icomp.ufam.edu.br})}
+\date{Outubro de 2026}
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+% =====================================================================
+\section{Introdução ao Problema}
+% =====================================================================
+No Mundo dos Blocos clássico todos os blocos têm o mesmo tamanho. Para descrever
+um estado basta dizer qual bloco está em cima de qual ($\on(x,y)$) e quais blocos
+não têm nada em cima ($\clr(x)$). Neste trabalho os blocos têm comprimentos
+diferentes (1, 2 e 3 unidades) e a mesa tem 6 espaços, chamados de \emph{slots}.
+Por isso também é preciso saber em que posição da mesa cada bloco está. Isso traz
+situações que não aparecem no caso clássico:
+\begin{itemize}
+  \item espaços vazios entre os blocos e embaixo de blocos que ficam suspensos;
+  \item pontes, quando um bloco comprido fica apoiado em dois blocos menores
+        separados;
+  \item equilíbrio, porque um bloco maior que o de baixo só fica parado se tiver
+        apoio suficiente;
+  \item movimentos laterais, porque o mesmo bloco pode ficar em mais de uma posição
+        em cima do mesmo apoio.
+\end{itemize}
+
+O problema de planejamento é o seguinte: temos um estado inicial e um estado meta,
+e queremos uma sequência de ações (um plano) que leve do primeiro ao segundo. O
+trabalho foi feito em três etapas:
+\begin{enumerate}
+  \item descrevemos o mundo em Lógica de Primeira Ordem (LPO), com os predicados,
+        os axiomas e a ação $\mv$ com suas pré-condições e efeitos
+        (Seção~\ref{sec:formal});
+  \item resolvemos cada cenário à mão e fizemos a análise de ordem parcial
+        (Seções~\ref{sec:manual} e~\ref{sec:pop});
+  \item passamos a descrição para Lógica Proposicional em CNF, com um número fixo
+        de $H$ passos, resolvemos com o MiniSat e interpretamos a resposta
+        (Seções~\ref{sec:cnf} a~\ref{sec:interp}).
+\end{enumerate}
+
+\paragraph{O que foi resolvido.} Resolvemos os três cenários pedidos no enunciado
+(Figura~\ref{fig:problema}):
+\begin{center}\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+Cenário & Estado inicial & Meta & Plano ótimo\\
+\midrule
+Situação 1 & $S_0$ & $S_{f4}$ (escolhida entre $S_{f1}$--$S_{f4}$) & 4 ações\\
+Situação 2 & $S_0$ da Situação 2 & $S_5$ & 5 ações\\
+Situação 3 & $S_0$ da Situação 3 (igual ao da Situação 1) & $S_7$ & 6 ações\\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{itemize}
+  \item Na Situação 1 escolhemos a meta $S_{f4}$ porque ela tem o plano mais
+        curto. Para $S_{f1}$ são necessárias 9 ações, e para $S_{f2}$ e $S_{f3}$
+        são 10.
+  \item O enunciado pede ``$S_0$ até $S_5$'' e ``$S_0$ até $S_7$''. Entendemos que
+        $S_5$ e $S_7$ são os estados finais das Situações 2 e 3, e que cada uma
+        começa no seu próprio $S_0$. Se o $S_0$ do item 2 for o da Situação 1, a
+        meta $S_5$ fica igual a $S_{f2}$ e o menor plano tem 10 ações. Também
+        testamos esse caso no SAT.
+  \item Como o enunciado permite, usamos um chatbot de IA (Claude) para ajudar a
+        escrever o código Python e a montar os planos. Conferimos todos os planos
+        passo a passo e também com o SAT (Seção~\ref{sec:interp}).
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+  \node[font=\small\bfseries,anchor=east] at (-0.3,0.5) {Situação 1};
+  \begin{scope}\mesa\Szero\rot{$S_0$}\end{scope}
+  \draw[-{Stealth},thick] (3.6,0.5) -- node[above,font=\small]{4 ações} (5.4,0.5);
+  \begin{scope}[xshift=6cm]\mesa\Sfq\rot{$S_{f4}$}\end{scope}
+  \begin{scope}[yshift=-3.2cm]
+    \node[font=\small\bfseries,anchor=east] at (-0.3,0.5) {Situação 2};
+    \begin{scope}\mesa\Tzero\rotA{$S_0$}\end{scope}
+    \draw[-{Stealth},thick] (3.6,0.5) -- node[above,font=\small]{5 ações} (5.4,0.5);
+    \begin{scope}[xshift=6cm]\mesa\Tcinco\rotA{$S_5$}\end{scope}
+  \end{scope}
+  \begin{scope}[yshift=-5.8cm]
+    \node[font=\small\bfseries,anchor=east] at (-0.3,0.5) {Situação 3};
+    \begin{scope}\mesa\Szero\rot{$S_0$}\end{scope}
+    \draw[-{Stealth},thick] (3.6,0.5) -- node[above,font=\small]{6 ações} (5.4,0.5);
+    \begin{scope}[xshift=6cm]\mesa\Usete\rot{$S_7$}\end{scope}
+  \end{scope}
+\end{tikzpicture}
+\caption{Os três problemas resolvidos.}
+\label{fig:problema}
+\end{figure}
+
+\noindent\textbf{Notação.} A mesa é $\mesaT$. O número de passos do plano (o
+horizonte) é $H$ (no código, \texttt{HORIZON}).
+
+% =====================================================================
+\section{Descrição Formal do Mundo dos Blocos de Tamanho Variado}
+\label{sec:formal}
+% =====================================================================
+
+\subsection{Domínio}
+\begin{itemize}
+  \item Blocos $\mathcal{B}=\{a,b,c,d\}$ com comprimento $\ell$:
+        $\ell(a)=\ell(b)=1$, $\ell(c)=2$, $\ell(d)=3$.
+  \item Pontos do eixo $\mathcal{X}=\{0,\dots,6\}$ e slots $s_i=[i,i+1]$,
+        $i\in\{0,\dots,5\}$ (6 slots, não 7).
+  \item Níveis $\mathcal{L}=\{0,1,2,3\}$ ($0$ = sobre a mesa) e instantes $t\in\{0,\dots,H\}$.
+  \item Um bloco $b$ que começa no ponto $p$ ocupa
+        $\spn(b,p)=\{p,\dots,p+\ell(b)-1\}$, com $p\in\{0,\dots,6-\ell(b)\}$.
+  \item $\ov(b,p,y,q) \leftrightarrow \spn(b,p)\cap\spn(y,q)\neq\emptyset$.
+\end{itemize}
+
+\subsection{Predicados e axiomas}
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Predicado & Significado & Tipo\\
+\midrule
+$\at(b,p,t)$ & $b$ começa no ponto $p$ no instante $t$ & básico\\
+$\lev(b,l,t)$ & $b$ está no nível $l$ & básico\\
+$\cov(b,s,l,t)$ & $b$ cobre o slot $s$ no nível $l$ & calculado\\
+$\livre(s,l,t)$ & nenhum bloco cobre $s$ no nível $l$ & calculado\\
+$\esp(b,s,t)$ & (novo) há espaço livre em cima de $b$, no slot $s$ & calculado\\
+$\clr(b,t)$ & não há nada em cima de $b$ (espaço livre em todos os slots) & calculado\\
+$\on(b,y,t)$ & $b$ está apoiado em $y\in\mathcal{B}\cup\{\mesaT\}$ & calculado\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent Para saber como o mundo está em um instante basta guardar $\at$ e $\lev$
+de cada bloco. Por isso chamamos esses dois de básicos. Os outros predicados são
+calculados a partir deles, usando as regras abaixo (elas valem para todo
+$b,y,p,s,l,t$):
+\begin{align}
+&\forall b,t\;\exists!\,p\;\at(b,p,t) \qquad \forall b,t\;\exists!\,l\;\lev(b,l,t)
+  \tag{A1 unicidade}\\
+&\cov(b,s,l,t) \leftrightarrow \lev(b,l,t)\land\exists p\,
+  \bigl(\at(b,p,t)\land s\in\spn(b,p)\bigr) \tag{A2}\\
+&b\neq b' \rightarrow \lnot\bigl(\cov(b,s,l,t)\land\cov(b',s,l,t)\bigr)
+  \tag{A3 exclusão}\\
+&\livre(s,l,t) \leftrightarrow \lnot\exists b\;\cov(b,s,l,t) \tag{A4}\\
+&\esp(b,s,t) \leftrightarrow \exists l\,\bigl(\cov(b,s,l,t)\land
+  \livre(s,l+1,t)\bigr) \tag{A5a espaço}\\
+&\clr(b,t) \leftrightarrow \forall s,l\,\bigl(\cov(b,s,l,t)\rightarrow
+  \esp(b,s,t)\bigr) \tag{A5b clear}\\
+&\on(b,\mesaT,t) \leftrightarrow \lev(b,0,t) \tag{A6}\\
+&\on(b,y,t) \leftrightarrow \exists p,q,l\;\at(b,p,t)\land\at(y,q,t)\land
+  \lev(b,l,t)\land\lev(y,l-1,t)\land\ov(b,p,y,q) \notag\\
+&\at(b,p,t)\land\lev(b,l,t)\land l>0 \rightarrow
+  \Bigl|\bigl\{s\in\spn(b,p):\lnot\livre(s,l-1,t)\bigr\}\Bigr|
+  \ge\Bigl\lceil\tfrac{\ell(b)}{2}\Bigr\rceil \tag{A7 estabilidade}
+\end{align}
+O predicado $\esp$ é novo. Ele funciona como um $\clr$ que olha um slot de cada vez:
+$\esp(b,s)$ é verdadeiro quando não tem nada em cima de $b$ no slot $s$. Já o
+$\clr(b)$ só é verdadeiro quando todos os slots de $b$ estão sem nada em cima
+(A5b). No último nível ($l=3$) não cabe nenhum bloco acima, então tratamos
+$\livre(s,4,t)$ como sempre verdadeiro.
+
+A regra A7 trata do equilíbrio. Um bloco que está em cima de outro precisa ter pelo
+menos metade dos seus slots apoiados. Os blocos $a$ e $b$ precisam de 1 slot
+apoiado. O bloco $c$ também precisa de 1, então pode ficar com metade para fora. O
+bloco $d$ precisa de 2. É por isso que a ponte de $S_0$ é válida: $d$ está apoiado
+em $a$ e em $b$, mesmo com o slot $s_4$ vazio embaixo dele.
+
+\subsection{A ação \texorpdfstring{$\mv(b,y,p)$}{move(b,y,p)}}
+``Mover o bloco $b$ para cima de $y$ (ou da mesa $\mesaT$), começando no ponto $p$.''
+Chamamos de $(p_0,l_0)$ a posição atual de $b$ e de $l^\ast$ o nível em que ele
+vai ficar:
+$l^\ast=0$ se $y=\mesaT$ e $l^\ast=\lev(y)+1$ se $y$ é bloco.
+
+\paragraph{Pré-condições.} A ação só pode ser executada se todas as condições abaixo
+forem verdadeiras:
+\begin{enumerate}
+  \item[P1] $\clr(b)$: não pode ter nada em cima de $b$.
+  \item[P2] Se $y$ é um bloco, $b$ tem que ficar de fato em cima de $y$, isto é,
+            pelo menos um slot de $b$ tem que cair sobre um slot de $y$
+            ($\ov(b,p,y,q)$, com $\at(y,q)$). Além disso, nesses slots tem que
+            haver espaço livre em cima de $y$ ($\esp(y,s)$). Se o próprio $b$ já
+            estiver em um desses slots, ele não conta como ocupado. Esta condição
+            entra no lugar do $\clr(y)$ do mundo clássico (Seção~\ref{sec:ajustes}).
+  \item[P3] O destino tem que ser diferente do lugar atual:
+            $(p,l^\ast)\neq(p_0,l_0)$.
+  \item[P4] Todos os slots de destino, $s\in\spn(b,p)$, têm que estar livres no
+            nível $l^\ast$ (sem contar o próprio $b$).
+  \item[P5] Regra da sombra: não pode ter nenhum bloco acima dos slots de destino,
+            em nenhum nível maior que $l^\ast$. Ou seja, não dá para colocar um
+            bloco embaixo de outro.
+  \item[P6] $l^\ast\le 3$, para não passar do último nível.
+\end{enumerate}
+A estabilidade (A7) não aparece como pré-condição porque ela já é uma regra que vale
+para todos os estados. Se o movimento deixasse o bloco sem apoio suficiente, o estado
+de chegada não seria permitido.
+
+\paragraph{Efeitos.} Usamos o estilo STRIPS, com uma lista do que passa a valer depois
+da ação (ADD) e uma lista do que deixa de valer (DEL). Aqui $z$ é o bloco onde $b$
+estava apoiado e $y'$ é o bloco onde $b$ fica apoiado depois.
+
+\pagebreak[3]
+\noindent Passa a valer (ADD):
+\begin{itemize}
+  \item a nova posição de $b$: $\at(b,p)$ e $\lev(b,l^\ast)$;
+  \item os slots que $b$ passa a cobrir: $\cov(b,s,l^\ast)$ para $s\in\spn(b,p)$;
+  \item os novos apoios: $\on(b,y')$ (podem ser dois, quando $b$ forma uma ponte);
+  \item os slots que $b$ deixou ficam livres: $\livre(s,l_0)$;
+  \item o bloco $z$ ganha espaço em cima nesses slots, $\esp(z,s)$, e fica com
+        $\clr(z)$ se não sobrou nada em cima dele.
+\end{itemize}
+\noindent Deixa de valer (DEL):
+\begin{itemize}
+  \item a posição antiga de $b$: $\at(b,p_0)$, $\lev(b,l_0)$ e $\cov(b,s,l_0)$;
+  \item os apoios antigos: $\on(b,z)$;
+  \item os slots que $b$ passou a ocupar deixam de estar livres: $\livre(s,l^\ast)$;
+  \item o bloco $y'$ perde o espaço em cima nesses slots, $\esp(y',s)$, e perde
+        $\clr(y')$.
+\end{itemize}
+Se $b$ não mudou de ponto ($p=p_0$) ou não mudou de nível ($l^\ast=l_0$), esse fato
+continua igual e não entra em nenhuma das duas listas.
+
+\subsection{Elementos novos e as ações associadas}
+A tabela abaixo mostra o que é novo em relação ao mundo clássico e o que a ação
+$\mv$ adiciona e remove em cada caso.
+
+\begin{center}\small
+\begin{tabularx}{\textwidth}{@{}l X X X@{}}
+\toprule
+Elemento & Para que serve & $\mv$ adiciona & $\mv$ remove\\
+\midrule
+$\ell(b)$ & tamanho do bloco & não muda & não muda\\
+$\at(b,p)$ & posição horizontal & $\at(b,p)$ de destino & $\at(b,p_0)$\\
+$\lev(b,l)$ & altura & $\lev(b,l^\ast)$ & $\lev(b,l_0)$\\
+$\cov(b,s,l)$ & ocupação de slots & slots do novo span & slots do span antigo\\
+$\livre(s,l)$ & espaços vazios & slots que $b$ deixou & slots que $b$ ocupou\\
+$\esp(b,s)$ (novo) & pode receber um bloco no slot $s$? & slots do antigo apoio que $b$ deixou &
+  slots do novo apoio onde $b$ pousou\\
+$\clr(b)$ & pode ser movido? & antigo apoio descoberto & cada novo apoio\\
+$\on(b,y)$ & apoio (1 ou 2 = ponte) & $\on(b,y')$ novos & $\on(b,z)$ antigos\\
+estabilidade (A7) & equilíbrio & \multicolumn{2}{l}{restrição verificada no estado de chegada}\\
+sombra (P5) & espaço sob bloco suspenso & \multicolumn{2}{l}{pré-condição (bloqueia o destino)}\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\subsection{Ajustes em relação ao mundo clássico}
+\label{sec:ajustes}
+As pré-condições do mundo clássico não são suficientes para blocos de tamanhos
+diferentes e por causa disso foi necessário realizar uns ajustes.
+
+\paragraph{(i) Um predicado novo no lugar de \texorpdfstring{$\clr(y)$}{clr(y)}.}
+No mundo clássico, para colocar $b$ em cima de $y$ é preciso $\clr(y)$. Naquele cenário isso
+funciona, porque só cabe um bloco em cima de outro. Aqui cabem dois blocos pequenos
+lado a lado em cima de $c$. Depois que $a$ vai para cima de $c$, $\clr(c)$ fica
+falso, e a regra clássica não deixa $b$ ir para o lado de $a$, mesmo com espaço disponível suficiente.
+Usando a regra clássica como está:
+\begin{itemize}
+  \item os estados $S_{f1}$, $S_{f2}$, o $S_5$ da Situação~2 e o $S_7$ da Situação~3
+        não podem ser alcançados. Fizemos o teste colocando $\clr(y)$ como
+        pré-condição na nossa CNF: a Situação~1 continua com plano de 4 ações, mas
+        as Situações~2 e~3 ficam sem solução em todos os horizontes que testamos
+        ($H$ de 0 a 12);
+  \item o passo $S_4\to S_5$ da figura da Situação~3 seria proibido, e o $S_0$ da
+        Situação~2, que já começa com $a$ e $b$ lado a lado em cima de $c$, nunca
+        poderia ser montado.
+\end{itemize}
+Por isso criamos o predicado $\esp(y,s,t)$, que significa ``há espaço livre em cima
+de $y$ no slot $s$'' (axioma A5a). Com ele ficamos com duas condições diferentes:
+\begin{itemize}
+  \item $\clr(b)$ diz que não tem nada em cima do bloco inteiro. É a condição para
+        mover $b$ (P1);
+  \item $\esp(y,s)$ diz que não tem nada em cima de $y$ só naquele slot. É a
+        condição para $y$ receber um bloco (P2).
+\end{itemize}
+O $\clr$ continua existindo com o mesmo significado. Ele só passou a ser escrito
+usando o $\esp$ (A5b).
+
+\paragraph{(ii) Regra da sombra.} Com blocos de tamanhos diferentes pode sobrar um
+espaço vazio embaixo de um bloco. Em $S_0$, por exemplo, o slot $s_4$ fica embaixo
+da ponte $d$. As outras pré-condições não impedem que um bloco seja colocado nesse
+tipo de espaço. Sem uma regra para isso, seria possível ir de $S_0$ a $S_{f3}$ em 2 ações
+(move(d,c,0) e move(a,T,2)),
+enfiando $a$ embaixo da parte de $d$ que fica para fora de $c$, o que não dá para
+fazer com blocos de verdade. Por isso incluímos a pré-condição P5.
+
+\paragraph{Conferência.} Com os ajustes (i) e (ii), cada passo desenhado nas figuras
+das Situações~2 e~3 pode ser feito com uma única ação válida.
+
+\subsection{Execução manual}
+\label{sec:manual}
+Para cada cenário mostramos o plano desenhado estado por estado. Para cada ação
+mostramos as pré-condições que conferimos e os efeitos (ADD e DEL). Conferimos os
+efeitos comparando os fatos verdadeiros antes e depois de cada ação. Para as tabelas
+não ficarem muito longas, não listamos as mudanças de $\esp$. Elas acompanham as de
+$\livre$: $\esp(y,s)$ é apagado nos slots onde $b$ pousa em cima de $y$ e é
+adicionado nos slots que $b$ deixa no bloco onde estava.
+
+\subsubsection{Situação 1: \texorpdfstring{$S_0 \to S_{f4}$}{S0 -> Sf4}}
+\label{sec:manual1}
+O plano manual tem 4 ações (Figura~\ref{fig:plano}). A Tabela~\ref{tab:passos}
+mostra, para cada passo, as pré-condições verificadas e os efeitos.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+  \begin{scope}\mesa\Szero\rot{$S_0$}\end{scope}
+  \draw[-{Stealth}] (3.3,0.5) -- node[above,font=\scriptsize]{$A_1$: move(d,c,0)} (5.1,0.5);
+  \begin{scope}[xshift=5.4cm]\mesa\Sum\rot{$S_1$}\end{scope}
+  \draw[-{Stealth}] (8.7,0.5) -- node[above,font=\scriptsize]{$A_2$: move(a,b,5)} (10.5,0.5);
+  \begin{scope}[xshift=10.8cm]\mesa\Sdois\rot{$S_2$}\end{scope}
+  \draw[-{Stealth}] (12.3,-0.45) -- node[right,font=\scriptsize]{$A_3$: move(d,T,2)} (12.3,-1.45);
+  \begin{scope}[xshift=10.8cm,yshift=-3.2cm]\mesa\Stres\rot{$S_3$}\end{scope}
+  \draw[-{Stealth}] (10.5,-2.7) -- node[above,font=\scriptsize]{$A_4$: move(a,c,0)} (8.7,-2.7);
+  \begin{scope}[xshift=5.4cm,yshift=-3.2cm]\mesa\Sfq\rot{$S_4 = S_{f4}$ (meta)}\end{scope}
+\end{tikzpicture}
+\caption{Plano manual de 4 ações.}
+\label{fig:plano}
+\end{figure}
+
+\begin{table}[H]
+\centering\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{@{}p{2.3cm} X X X@{}}
+\toprule
+Ação & Pré-condições (verificadas) & ADD & DEL\\
+\midrule
+$A_1$: move(d,c,0)\newline $t=0$ &
+$\clr(d)$; $c$ no nível 0 em $p{=}0$ e $\spn(d,0)=\{0,1,2\}$ sobrepõe
+$\spn(c,0)=\{0,1\}$; $s_0,s_1,s_2$ livres no nível 1 e acima;
+estável: $s_0,s_1$ ocupados $\Rightarrow 2\ge\lceil 3/2\rceil$. &
+$\at(d,0)$, $\on(d,c)$, $\clr(a)$, $\clr(b)$, $\livre(s_3..s_5,1)$ &
+$\at(d,3)$, $\on(d,a)$, $\on(d,b)$, $\clr(c)$, $\livre(s_0..s_2,1)$\\
+\midrule
+$A_2$: move(a,b,5)\newline $t=1$ &
+$\clr(a)$ (liberado por $A_1$); $b$ no nível 0 em $p{=}5$ e $\{5\}$ sobrepõe $\{5\}$;
+$s_5$ livre no nível 1 e acima; estável: $s_5$ ocupado por $b$. &
+$\at(a,5)$, $\lev(a,1)$, $\on(a,b)$, $\livre(s_3,0)$ &
+$\at(a,3)$, $\lev(a,0)$, $\on(a,\mesaT)$, $\clr(b)$, $\livre(s_5,1)$\\
+\midrule
+$A_3$: move(d,T,2)\newline $t=2$ &
+$\clr(d)$; $s_2,s_3,s_4$ livres no nível 0 ($s_3$ liberado por $A_2$) e acima
+($a$ está em $s_5$, fora do span). &
+$\at(d,2)$, $\lev(d,0)$, $\on(d,\mesaT)$, $\clr(c)$, $\livre(s_0..s_2,1)$ &
+$\at(d,0)$, $\lev(d,1)$, $\on(d,c)$, $\livre(s_2..s_4,0)$\\
+\midrule
+$A_4$: move(a,c,0)\newline $t=3$ &
+$\clr(a)$; $c$ no nível 0 em $p{=}0$ e $\{0\}\subset\{0,1\}$; $s_0$ livre no nível 1
+e acima (liberado por $A_3$); estável: $s_0$ ocupado por $c$. &
+$\at(a,0)$, $\on(a,c)$, $\clr(b)$, $\livre(s_5,1)$ &
+$\at(a,5)$, $\on(a,b)$, $\clr(c)$, $\livre(s_0,1)$\\
+\bottomrule
+\end{tabularx}
+\caption{Situação 1: execução manual passo a passo. Em $A_1$ e $A_4$ o nível do bloco não
+muda (continua 1), então $\lev$ não aparece no ADD/DEL.}
+\label{tab:passos}
+\end{table}
+
+\paragraph{Por que 4 ações é o mínimo.} (1) O primeiro movimento de $d$ não pode
+ser para a posição final, porque $a$ ocupa $s_3$. Ele também não pode ser para a
+mesa, porque não há 3 slots livres seguidos. Então $d$ vai primeiro para cima de
+$c$ e se move pelo menos duas vezes. (2) $a$ precisa sair de $s_3$ antes do
+segundo movimento de $d$, mas nesse momento $c$ está coberto por $d$, então o
+primeiro movimento de $a$ também não é o final. Logo $a$ também se move pelo menos
+duas vezes. Somando, são pelo menos 4 ações. O SAT dá o mesmo resultado: com $H=3$ a
+fórmula é insatisfatível
+(Seção~\ref{sec:exec}).
+
+
+\subsubsection{Situação 2: \texorpdfstring{$S_0 \to S_5$}{S0 -> S5}}
+\label{sec:manual2}
+O plano manual é o da própria figura do enunciado, com 5 ações
+(Figura~\ref{fig:plano2} e Tabela~\ref{tab:passos2}).
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+  \begin{scope}\mesa\Tzero\rotA{$S_0$}\end{scope}
+  \draw[-{Stealth}] (3.3,0.5) -- node[above,font=\scriptsize]{$B_1$: move(b,T,2)} (5.1,0.5);
+  \begin{scope}[xshift=5.4cm]\mesa\Tum\rotA{$S_1$}\end{scope}
+  \draw[-{Stealth}] (8.7,0.5) -- node[above,font=\scriptsize]{$B_2$: move(a,b,2)} (10.5,0.5);
+  \begin{scope}[xshift=10.8cm]\mesa\Tdois\rotA{$S_2$}\end{scope}
+  \draw[-{Stealth}] (12.3,-0.45) -- node[right,font=\scriptsize]{$B_3$: move(c,d,4)} (12.3,-1.55);
+  \begin{scope}[xshift=10.8cm,yshift=-3.8cm]\mesa\Ttres\rotA{$S_3$}\end{scope}
+  \draw[-{Stealth}] (10.5,-3.3) -- node[above,font=\scriptsize]{$B_4$: move(a,c,4)} (8.7,-3.3);
+  \begin{scope}[xshift=5.4cm,yshift=-3.8cm]\mesa\Tquatro\rotA{$S_4$}\end{scope}
+  \draw[-{Stealth}] (5.1,-3.3) -- node[above,font=\scriptsize]{$B_5$: move(b,c,5)} (3.3,-3.3);
+  \begin{scope}[yshift=-3.8cm]\mesa\Tcinco\rotA{$S_5$ (meta)}\end{scope}
+\end{tikzpicture}
+\caption{Situação 2: plano manual de 5 ações (o mesmo da figura do enunciado).}
+\label{fig:plano2}
+\end{figure}
+
+\begin{table}[H]
+\centering\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{@{}p{2.3cm} X X X@{}}
+\toprule
+Ação & Pré-condições (verificadas) & ADD & DEL\\
+\midrule
+$B_1$: move(b,T,2)\newline $t=0$ &
+$\clr(b)$; $s_2$ livre no nível 0 e acima (sombra); na mesa não há teste de equilíbrio. &
+$\at(b,2)$, $\lev(b,0)$, $\on(b,\mesaT)$, $\livre(s_1,1)$ &
+$\at(b,1)$, $\lev(b,1)$, $\on(b,c)$, $\livre(s_2,0)$\\
+\midrule
+$B_2$: move(a,b,2)\newline $t=1$ &
+$\clr(a)$; $b$ no nível 0 em $p{=}2$ e $\{2\}$ sobrepõe $\{2\}$; $s_2$ livre no nível 1 e
+acima; estável: $s_2$ apoiado por $b$. &
+$\at(a,2)$, $\on(a,b)$, $\clr(c)$, $\livre(s_0,1)$ &
+$\at(a,0)$, $\on(a,c)$, $\clr(b)$, $\livre(s_2,1)$\\
+\midrule
+$B_3$: move(c,d,4)\newline $t=2$ &
+$\clr(c)$ ($b$ e $a$ saíram em $B_1$ e $B_2$); $d$ no nível 0 em $p{=}3$ e $\{4,5\}\subset\{3,4,5\}$;
+$s_4,s_5$ livres no nível 1 e acima; estável: $2\ge\lceil 2/2\rceil$. &
+$\at(c,4)$, $\lev(c,1)$, $\on(c,d)$, $\livre(s_0,0)$, $\livre(s_1,0)$ &
+$\at(c,0)$, $\lev(c,0)$, $\on(c,\mesaT)$, $\clr(d)$, $\livre(s_4,1)$, $\livre(s_5,1)$\\
+\midrule
+$B_4$: move(a,c,4)\newline $t=3$ &
+$\clr(a)$; $c$ no nível 1 em $p{=}4$ e $\{4\}\subset\{4,5\}$; $s_4$ livre no nível 2 e acima;
+estável: $s_4$ apoiado por $c$. &
+$\at(a,4)$, $\lev(a,2)$, $\on(a,c)$, $\clr(b)$, $\livre(s_2,1)$ &
+$\at(a,2)$, $\lev(a,1)$, $\on(a,b)$, $\clr(c)$, $\livre(s_4,2)$\\
+\midrule
+$B_5$: move(b,c,5)\newline $t=4$ &
+$\clr(b)$ (liberado por $B_4$); $c$ no nível 1 em $p{=}4$ e $\{5\}\subset\{4,5\}$; $s_5$ livre
+no nível 2 e acima; estável: $s_5$ apoiado por $c$. Aqui $\clr(c)$ é falso, porque $a$ está em cima de $c$, mas $\esp(c,s_5)$ é
+verdadeiro. Sem o predicado novo esta ação não seria permitida. &
+$\at(b,5)$, $\lev(b,2)$, $\on(b,c)$, $\livre(s_2,0)$ &
+$\at(b,2)$, $\lev(b,0)$, $\on(b,\mesaT)$, $\livre(s_5,2)$\\
+\bottomrule
+\end{tabularx}
+\caption{Situação 2: execução manual passo a passo. Em $B_2$ o nível de $a$ não muda (continua 1).}
+\label{tab:passos2}
+\end{table}
+
+\paragraph{Por que 5 ações é o mínimo.} O bloco $c$ precisa ir para cima de $d$
+(pelo menos 1 ação). Mas $a$ e $b$ estão em cima de $c$ e terminam de novo em cima
+de $c$, agora no nível 2. Cada um precisa sair de cima de $c$ antes de $c$ se mover
+e voltar depois, então cada um se move pelo menos duas vezes. Somando, são pelo menos
+$1+2+2=5$ ações. No SAT, com $H=4$ a fórmula é insatisfatível. Existe mais de um
+plano com 5 ações, e o SAT devolveu um que não é o da figura
+(Seção~\ref{sec:interp}).
+
+\subsubsection{Situação 3: \texorpdfstring{$S_0 \to S_7$}{S0 -> S7}}
+\label{sec:manual3}
+O plano manual tem 6 ações (Figura~\ref{fig:plano3} e Tabela~\ref{tab:passos3}). O
+$S_0$ é o mesmo da Situação 1, e os quatro primeiros passos são os mesmos do plano
+de lá. Depois deles o estado é $S_4=S_{f4}$. Na figura do enunciado os estados $S_5$
+e $S_6$ são iguais, então tratamos os dois como um estado só.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}
+  \begin{scope}\mesa\Szero\rot{$S_0$}\end{scope}
+  \draw[-{Stealth}] (3.3,0.5) -- node[above,font=\scriptsize]{$C_1$: move(d,c,0)} (5.1,0.5);
+  \begin{scope}[xshift=5.4cm]\mesa\Sum\rot{$S_1$}\end{scope}
+  \draw[-{Stealth}] (8.7,0.5) -- node[above,font=\scriptsize]{$C_2$: move(a,b,5)} (10.5,0.5);
+  \begin{scope}[xshift=10.8cm]\mesa\Sdois\rot{$S_2$}\end{scope}
+  \draw[-{Stealth}] (12.3,-0.45) -- node[right,font=\scriptsize]{$C_3$: move(d,T,2)} (12.3,-1.45);
+  \begin{scope}[xshift=10.8cm,yshift=-3.2cm]\mesa\Stres\rot{$S_3$}\end{scope}
+  \draw[-{Stealth}] (10.5,-2.7) -- node[above,font=\scriptsize]{$C_4$: move(a,c,0)} (8.7,-2.7);
+  \begin{scope}[xshift=5.4cm,yshift=-3.2cm]\mesa\Sfq\rot{$S_4$}\end{scope}
+  \draw[-{Stealth}] (5.1,-2.7) -- node[above,font=\scriptsize]{$C_5$: move(b,c,1)} (3.3,-2.7);
+  \begin{scope}[yshift=-3.2cm]\mesa\Ucinco\rot{$S_5=S_6$}\end{scope}
+  \draw[-{Stealth}] (1.5,-3.65) -- node[right,font=\scriptsize]{$C_6$: move(d,T,3)} (1.5,-4.65);
+  \begin{scope}[yshift=-6.4cm]\mesa\Usete\rot{$S_7$ (meta)}\end{scope}
+\end{tikzpicture}
+\caption{Situação 3: plano manual de 6 ações.}
+\label{fig:plano3}
+\end{figure}
+
+\begin{table}[H]
+\centering\small
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{@{}p{2.3cm} X X X@{}}
+\toprule
+Ação & Pré-condições (verificadas) & ADD & DEL\\
+\midrule
+$C_1$: move(d,c,0)\newline $t=0$ &
+$\clr(d)$; $c$ no nível 0 em $p{=}0$ e $\spn(d,0)=\{0,1,2\}$ sobrepõe
+$\spn(c,0)=\{0,1\}$; $s_0,s_1,s_2$ livres no nível 1 e acima;
+estável: $s_0,s_1$ ocupados $\Rightarrow 2\ge\lceil 3/2\rceil$. &
+$\at(d,0)$, $\on(d,c)$, $\clr(a)$, $\clr(b)$, $\livre(s_3..s_5,1)$ &
+$\at(d,3)$, $\on(d,a)$, $\on(d,b)$, $\clr(c)$, $\livre(s_0..s_2,1)$\\
+\midrule
+$C_2$: move(a,b,5)\newline $t=1$ &
+$\clr(a)$ (liberado por $C_1$); $b$ no nível 0 em $p{=}5$ e $\{5\}$ sobrepõe $\{5\}$;
+$s_5$ livre no nível 1 e acima; estável: $s_5$ ocupado por $b$. &
+$\at(a,5)$, $\lev(a,1)$, $\on(a,b)$, $\livre(s_3,0)$ &
+$\at(a,3)$, $\lev(a,0)$, $\on(a,\mesaT)$, $\clr(b)$, $\livre(s_5,1)$\\
+\midrule
+$C_3$: move(d,T,2)\newline $t=2$ &
+$\clr(d)$; $s_2,s_3,s_4$ livres no nível 0 ($s_3$ liberado por $C_2$) e acima
+($a$ está em $s_5$, fora do span). &
+$\at(d,2)$, $\lev(d,0)$, $\on(d,\mesaT)$, $\clr(c)$, $\livre(s_0..s_2,1)$ &
+$\at(d,0)$, $\lev(d,1)$, $\on(d,c)$, $\livre(s_2..s_4,0)$\\
+\midrule
+$C_4$: move(a,c,0)\newline $t=3$ &
+$\clr(a)$; $c$ no nível 0 em $p{=}0$ e $\{0\}\subset\{0,1\}$; $s_0$ livre no nível 1
+e acima (liberado por $C_3$); estável: $s_0$ ocupado por $c$. &
+$\at(a,0)$, $\on(a,c)$, $\clr(b)$, $\livre(s_5,1)$ &
+$\at(a,5)$, $\on(a,b)$, $\clr(c)$, $\livre(s_0,1)$\\
+\midrule
+$C_5$: move(b,c,1)\newline $t=4$ &
+$\clr(b)$ ($a$ saiu de cima de $b$ em $C_4$); $c$ no nível 0 em $p{=}0$ e $\{1\}\subset\{0,1\}$;
+$s_1$ livre no nível 1 e acima ($a$ ocupa só $s_0$); estável: $s_1$ apoiado por $c$.
+Aqui $\clr(c)$ é falso, porque $a$ está em cima de $c$, mas $\esp(c,s_1)$ é
+verdadeiro. Sem o predicado novo esta ação não seria permitida. &
+$\at(b,1)$, $\lev(b,1)$, $\on(b,c)$, $\livre(s_5,0)$ &
+$\at(b,5)$, $\lev(b,0)$, $\on(b,\mesaT)$, $\livre(s_1,1)$\\
+\midrule
+$C_6$: move(d,T,3)\newline $t=5$ &
+$\clr(d)$; $s_3,s_4,s_5$ livres no nível 0 sem contar o próprio $d$ ($s_5$ liberado em
+$C_5$) e acima ($s_5$ no nível 1 está livre desde $C_4$). É um movimento lateral, em que $d$ anda uma posição na mesa. &
+$\at(d,3)$, $\livre(s_2,0)$ &
+$\at(d,2)$, $\livre(s_5,0)$\\
+\bottomrule
+\end{tabularx}
+\caption{Situação 3: execução manual passo a passo. Em $C_1$ e $C_4$ o nível do
+bloco não muda (continua 1). Em $C_6$ o nível e os apoios de $d$ não mudam.}
+\label{tab:passos3}
+\end{table}
+
+\paragraph{Por que 6 ações é o mínimo.} (1) O primeiro movimento de $d$ não pode
+ser para o lugar final, porque $a$ ocupa $s_3$ e $b$ ocupa $s_5$. Ele também não pode
+ser para outro lugar da mesa, porque não há 3 slots livres seguidos. Então $d$ vai
+primeiro para cima de $c$ e se move pelo menos duas vezes. (2) $a$ precisa sair de
+$s_3$ antes de $d$ descer para a mesa, mas nesse momento $c$ está coberto por $d$,
+então o primeiro movimento de $a$ não é o final. Logo $a$ também se move pelo menos
+duas vezes. (3) $b$ tem que sair de $s_5$ e ir para cima de $c$, e $d$ só pode ir
+para $p=3$ depois que $s_5$ ficar livre. Se $b$ se move uma única vez (direto para
+cima de $c$), isso só acontece depois de $d$ sair de cima de $c$ para a mesa em
+$p=2$, e então $d$ precisa de um terceiro movimento. Se $d$ se move só duas vezes,
+$b$ precisa de um movimento a mais para sair do caminho. Nos dois casos são pelo
+menos 6 ações. No SAT, com $H=5$ a fórmula é insatisfatível.
+
+\subsection{Ordem parcial}
+\label{sec:pop}
+Um plano de ordem parcial não fixa a ordem de todas as ações. Ele só fixa a ordem
+que é realmente necessária. Ele é formado por:
+\begin{itemize}
+  \item ações, incluindo duas que não movem nada: \textit{Início}, que tem como
+        efeitos os fatos de $S_0$, e \textit{Fim}, que tem como pré-condições os
+        fatos da meta;
+  \item vínculos causais $A\xrightarrow{\;p\;}B$, que significam que a ação $A$
+        produz a condição $p$ e que $p$ é pré-condição de $B$;
+  \item restrições de ordem $A\prec B$ (``$A$ antes de $B$''), que vêm dos vínculos
+        causais.
+\end{itemize}
+Uma ação $C$ é uma ameaça ao vínculo $A\xrightarrow{p}B$ se ela apaga $p$ e pode
+acontecer entre $A$ e $B$. Para resolver a ameaça, colocamos $C$ depois de $B$
+(promoção, $B\prec C$) ou antes de $A$ (rebaixamento, $C\prec A$). Uma
+linearização é uma ordem completa das ações que respeita todas as restrições.
+
+\subsubsection{Situação 1}
+\begin{table}[H]
+\centering\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Vínculo causal & Condição $p$ & Ordem gerada\\
+\midrule
+Início $\to A_1$ & $\clr(d)$, $c$ em $(0,0)$, $s_0..s_2$ livres no nível 1 & nenhuma\\
+$A_1 \to A_2$ & $\clr(a)$, $\livre(s_5,1)$ & $A_1\prec A_2$\\
+Início $\to A_2$ & $b$ em $(5,0)$ (apoio) & nenhuma\\
+$A_2 \to A_3$ & $\livre(s_3,0)$ & $A_2\prec A_3$\\
+$A_1 \to A_3$ & $\livre(s_3,1)$, $\livre(s_4,1)$: nada acima do destino (sombra) & $A_1\prec A_3$\\
+Início $\to A_3$ & $\clr(d)$, $\livre(s_2,0)$, $\livre(s_4,0)$ & nenhuma\\
+$A_1 \to A_4$ & $\clr(a)$ & $A_1\prec A_4$\\
+$A_3 \to A_4$ & $\livre(s_0,1)$ (c descoberto) & $A_3\prec A_4$\\
+$A_3 \to$ Fim & $\at(d,2)\land\lev(d,0)$ & nenhuma\\
+$A_4 \to$ Fim & $\at(a,0)\land\lev(a,1)$ & nenhuma\\
+Início $\to$ Fim & $\at(b,5)$, $\at(c,0)$, $\lev(b,0)$, $\lev(c,0)$ & nenhuma\\
+\bottomrule
+\end{tabular}
+\caption{Situação 1: vínculos causais do plano $S_0\to S_{f4}$.}
+\label{tab:pop}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[node distance=1.0cm,
+  acao/.style={draw,rounded corners,fill=cora!12,minimum width=4.4cm,
+               minimum height=0.75cm,font=\small},
+  lig/.style={-{Stealth},thick}]
+  \node[acao,fill=black!6] (ini) {Início ($S_0$)};
+  \node[acao,below=of ini] (a1) {$A_1$: move(d,c,0)};
+  \node[acao,below=of a1] (a2) {$A_2$: move(a,b,5)};
+  \node[acao,below=of a2] (a3) {$A_3$: move(d,T,2)};
+  \node[acao,below=of a3] (a4) {$A_4$: move(a,c,0)};
+  \node[acao,below=of a4,fill=black!6] (fim) {Fim ($S_{f4}$)};
+  \draw[lig] (ini) -- node[right,font=\footnotesize]{\ $\clr(d)$} (a1);
+  \draw[lig] (a1) -- node[right,font=\footnotesize]{\ $\clr(a)$, $\livre(s_5,1)$} (a2);
+  \draw[lig] (a2) -- node[right,font=\footnotesize]{\ $\livre(s_3,0)$: $a$ saiu do caminho de $d$} (a3);
+  \draw[lig] (a3) -- node[right,font=\footnotesize]{\ $\livre(s_0,1)$: $c$ ficou descoberto} (a4);
+  \draw[lig] (a4) -- node[right,font=\footnotesize]{\ $\at(a,0)\land\lev(a,1)$} (fim);
+\end{tikzpicture}
+\caption{Grafo de ordem parcial da Situação 1. As setas são os vínculos causais
+que fixam a ordem. Os vínculos entre ações que não são vizinhas estão na
+Tabela~\ref{tab:pop}.}
+\label{fig:pop}
+\end{figure}
+
+\pagebreak[3]
+\paragraph{Análise de ameaças.}
+\begin{itemize}
+  \item $A_2$ apaga $\clr(b)$ e $\livre(s_5,1)$: nenhuma ação posterior precisa
+        delas. Sem ameaça.
+  \item $A_3$ apaga $\livre(s_2..s_4,0)$: só a Fim usa esses slots (com $d$).
+        Sem ameaça.
+  \item O vínculo $A_1\xrightarrow{\clr(a)}A_4$ só seria ameaçado por uma ação que
+        pusesse um bloco sobre $a$ entre $A_1$ e $A_4$, e nenhuma ação faz isso.
+\end{itemize}
+
+\paragraph{Um exemplo de ameaça sem solução.} Se trocarmos $A_2$ por
+move(a,T,4), que parece mais simples porque põe $a$ direto na mesa, essa ação apaga
+$\livre(s_4,0)$, que $A_3$ precisa (vínculo Início $\xrightarrow{\livre(s_4,0)} A_3$).
+Rebaixamento (antes do Início) é impossível. Promoção ($A_3\prec$ move(a,T,4))
+também é, porque $A_3$ depende de $a$ ter saído de $s_3$. A ameaça não tem
+solução, e esse plano é inválido.
+
+\paragraph{Conclusão.} As restrições $A_1\prec A_2\prec A_3\prec A_4$ formam uma
+cadeia, então só existe uma linearização. Isso acontece porque cada ação libera o
+caminho da próxima: $d$ está em cima de $a$, $a$ está no caminho de $d$, e $d$ está
+em cima do lugar final de $a$. Em outros cenários há mais liberdade. Na Situação~2,
+por exemplo, existe um plano ótimo com 4 linearizações.
+
+\subsubsection{Situação 2}
+\begin{table}[H]
+\centering\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Vínculo causal & Condição $p$ & Ordem gerada\\
+\midrule
+Início $\to B_1$ & $\clr(b)$, $\livre(s_2,0)$ & nenhuma\\
+$B_1 \to B_2$ & $b$ em $(2,0)$ (apoio de $a$) & $B_1\prec B_2$\\
+Início $\to B_2$ & $\clr(a)$, $\livre(s_2,1)$ & nenhuma\\
+$B_1 \to B_3$ & $\livre(s_1,1)$: $b$ saiu de cima de $c$ & $B_1\prec B_3$\\
+$B_2 \to B_3$ & $\clr(c)$: $a$ saiu de cima de $c$ & $B_2\prec B_3$\\
+Início $\to B_3$ & $d$ em $(3,0)$, $\livre(s_4,1)$, $\livre(s_5,1)$ & nenhuma\\
+$B_3 \to B_4$ & $c$ em $(4,1)$ & $B_3\prec B_4$\\
+$B_3 \to B_5$ & $c$ em $(4,1)$ & $B_3\prec B_5$\\
+$B_4 \to B_5$ & $\clr(b)$: $a$ saiu de cima de $b$ & $B_4\prec B_5$\\
+$B_3, B_4, B_5 \to$ Fim & $c$, $a$, $b$ nos lugares finais & nenhuma\\
+Início $\to$ Fim & $d$ em $(3,0)$ & nenhuma\\
+\bottomrule
+\end{tabular}
+\caption{Situação 2: vínculos causais do plano da figura.}
+\label{tab:pop2}
+\end{table}
+
+\paragraph{Ameaça.} $B_2$ coloca $a$ em cima de $b$ e apaga $\clr(b)$, que $B_5$
+precisa. A única ação que devolve $\clr(b)$ é $B_4$, quando $a$ sai de cima de $b$.
+Por isso é preciso $B_4\prec B_5$. Com isso o plano da figura vira uma cadeia
+$B_1\prec B_2\prec B_3\prec B_4\prec B_5$, com uma única linearização.
+
+\paragraph{Um plano alternativo com mais de uma ordem possível.} A ameaça existe
+porque o $a$ foi guardado em cima do $b$. Se guardarmos o $a$ em cima do $d$, temos
+outro plano ótimo de 5 ações, sem essa dependência (Figura~\ref{fig:pop2}):
+$\{$move(b,T,2), move(a,d,3)$\}\prec$ move(c,d,4) $\prec\{$move(a,c,4), move(b,c,5)$\}$.
+As duas ações de cada par não dependem uma da outra, porque os blocos já estão
+livres e vão para slots diferentes. Então cada par pode ser executado em qualquer
+ordem, e esse plano parcial tem $2\times 2=4$ linearizações.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[acao/.style={draw,rounded corners,fill=cora!12,minimum width=3.4cm,
+               minimum height=0.7cm,font=\small},
+  lig/.style={-{Stealth},thick}]
+  \node[acao,fill=black!6] (ini) at (0,0) {Início ($S_0$)};
+  \node[acao] (p1) at (-3,-1.6) {move(b,T,2)};
+  \node[acao] (p2) at (3,-1.6) {move(a,d,3)};
+  \node[acao] (p3) at (0,-3.2) {move(c,d,4)};
+  \node[acao] (p4) at (-3,-4.8) {move(a,c,4)};
+  \node[acao] (p5) at (3,-4.8) {move(b,c,5)};
+  \node[acao,fill=black!6] (fim) at (0,-6.4) {Fim ($S_5$)};
+  \node[font=\footnotesize\itshape] at (0,-1.6) {sem ordem};
+  \node[font=\footnotesize\itshape] at (0,-4.8) {sem ordem};
+  \draw[lig] (ini) -- (p1); \draw[lig] (ini) -- (p2);
+  \draw[lig] (p1) -- node[left,font=\footnotesize]{$\livre(s_1,1)$\ } (p3);
+  \draw[lig] (p2) -- node[right,font=\footnotesize]{\ $\livre(s_0,1)$} (p3);
+  \draw[lig] (p3) -- node[left,font=\footnotesize]{$c$ em $(4,1)$\ } (p4);
+  \draw[lig] (p3) -- node[right,font=\footnotesize]{\ $c$ em $(4,1)$} (p5);
+  \draw[lig] (p4) -- (fim); \draw[lig] (p5) -- (fim);
+\end{tikzpicture}
+\caption{Situação 2: plano alternativo de ordem parcial, com 4 linearizações.}
+\label{fig:pop2}
+\end{figure}
+
+\subsubsection{Situação 3}
+O plano tem seis ações: $C_1$ = move(d,c,0), $C_2$ = move(a,b,5), $C_3$ = move(d,T,2),
+$C_4$ = move(a,c,0), $C_5$ = move(b,c,1) e $C_6$ = move(d,T,3). A
+Tabela~\ref{tab:pop3} mostra, para cada pré-condição de cada ação, qual ação produz
+essa condição.
+
+\begin{table}[H]
+\centering\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Vínculo causal & Condição $p$ & Ordem gerada\\
+\midrule
+Início $\to C_1$ & $\clr(d)$, $c$ em $(0,0)$, $s_0..s_2$ livres no nível 1 & nenhuma\\
+\midrule
+$C_1 \to C_2$ & $\clr(a)$, $\livre(s_5,1)$: $d$ saiu de cima de $a$ e de $b$ & $C_1\prec C_2$\\
+Início $\to C_2$ & $b$ em $(5,0)$ (apoio de $a$) & nenhuma\\
+\midrule
+$C_2 \to C_3$ & $\livre(s_3,0)$: $a$ saiu do caminho de $d$ & $C_2\prec C_3$\\
+$C_1 \to C_3$ & $\livre(s_3,1)$, $\livre(s_4,1)$: nada acima do destino (sombra) & $C_1\prec C_3$\\
+Início $\to C_3$ & $\clr(d)$, $\livre(s_2,0)$, $\livre(s_4,0)$ & nenhuma\\
+\midrule
+$C_1 \to C_4$ & $\clr(a)$ & $C_1\prec C_4$\\
+$C_3 \to C_4$ & $\livre(s_0,1)$: $d$ saiu de cima de $c$ & $C_3\prec C_4$\\
+Início $\to C_4$ & $c$ em $(0,0)$ (apoio de $a$) & nenhuma\\
+\midrule
+$C_4 \to C_5$ & $\clr(b)$: $a$ saiu de cima de $b$ & $C_4\prec C_5$\\
+$C_3 \to C_5$ & $\livre(s_1,1)$: $d$ saiu de cima de $c$ & $C_3\prec C_5$\\
+Início $\to C_5$ & $c$ em $(0,0)$ (apoio de $b$) & nenhuma\\
+\midrule
+$C_5 \to C_6$ & $\livre(s_5,0)$: $b$ saiu da mesa & $C_5\prec C_6$\\
+$C_4 \to C_6$ & $\livre(s_5,1)$: $a$ saiu de cima de $s_5$ (sombra) & $C_4\prec C_6$\\
+$C_1 \to C_6$ & $\livre(s_3,1)$, $\livre(s_4,1)$: nada acima do destino (sombra) & $C_1\prec C_6$\\
+Início $\to C_6$ & $\clr(d)$ & nenhuma\\
+\midrule
+$C_4 \to$ Fim & $\at(a,0)\land\lev(a,1)$ & nenhuma\\
+$C_5 \to$ Fim & $\at(b,1)\land\lev(b,1)$ & nenhuma\\
+$C_6 \to$ Fim & $\at(d,3)\land\lev(d,0)$ & nenhuma\\
+Início $\to$ Fim & $\at(c,0)\land\lev(c,0)$ & nenhuma\\
+\bottomrule
+\end{tabular}
+\caption{Situação 3: vínculos causais do plano $S_0\to S_7$, agrupados pela ação que
+usa a condição.}
+\label{tab:pop3}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[node distance=0.8cm,
+  acao/.style={draw,rounded corners,fill=cora!12,minimum width=4.4cm,
+               minimum height=0.7cm,font=\small},
+  lig/.style={-{Stealth},thick}]
+  \node[acao,fill=black!6] (ini) {Início ($S_0$)};
+  \node[acao,below=of ini] (c1) {$C_1$: move(d,c,0)};
+  \node[acao,below=of c1] (c2) {$C_2$: move(a,b,5)};
+  \node[acao,below=of c2] (c3) {$C_3$: move(d,T,2)};
+  \node[acao,below=of c3] (c4) {$C_4$: move(a,c,0)};
+  \node[acao,below=of c4] (c5) {$C_5$: move(b,c,1)};
+  \node[acao,below=of c5] (c6) {$C_6$: move(d,T,3)};
+  \node[acao,below=of c6,fill=black!6] (fim) {Fim ($S_7$)};
+  \draw[lig] (ini) -- node[right,font=\footnotesize]{\ $\clr(d)$} (c1);
+  \draw[lig] (c1) -- node[right,font=\footnotesize]{\ $\clr(a)$, $\livre(s_5,1)$} (c2);
+  \draw[lig] (c2) -- node[right,font=\footnotesize]{\ $\livre(s_3,0)$: $a$ saiu do caminho de $d$} (c3);
+  \draw[lig] (c3) -- node[right,font=\footnotesize]{\ $\livre(s_0,1)$: $d$ saiu de cima de $c$} (c4);
+  \draw[lig] (c4) -- node[right,font=\footnotesize]{\ $\clr(b)$: $a$ saiu de cima de $b$} (c5);
+  \draw[lig] (c5) -- node[right,font=\footnotesize]{\ $\livre(s_5,0)$: $b$ saiu da mesa} (c6);
+  \draw[lig] (c6) -- node[right,font=\footnotesize]{\ $\at(d,3)\land\lev(d,0)$} (fim);
+\end{tikzpicture}
+\caption{Grafo de ordem parcial da Situação 3. As setas são os vínculos causais que
+fixam a ordem. Os vínculos entre ações que não são vizinhas estão na
+Tabela~\ref{tab:pop3}.}
+\label{fig:pop3}
+\end{figure}
+
+\paragraph{Análise de ameaças.} Para cada ação, olhamos o que ela apaga e se alguma
+outra ação precisa dessa condição.
+\begin{itemize}
+  \item $C_1$ apaga $\clr(c)$ e $\livre(s_0..s_2,1)$. $C_4$ e $C_5$ precisam de
+        $\livre(s_0,1)$ e $\livre(s_1,1)$, mas quem produz essas condições é $C_3$,
+        que já vem depois de $C_1$. Sem ameaça.
+  \item $C_2$ apaga $\clr(b)$ e $\livre(s_5,1)$. $C_5$ precisa de $\clr(b)$ e $C_6$
+        precisa de $\livre(s_5,1)$, mas as duas condições são devolvidas por $C_4$,
+        que já vem depois de $C_2$ ($C_2\prec C_3\prec C_4$). Sem ameaça.
+  \item $C_3$ apaga $\livre(s_2..s_4,0)$. Depois dela só o próprio $d$ usa esses
+        slots, em $C_6$. Sem ameaça.
+  \item $C_4$ apaga $\clr(c)$ e $\livre(s_0,1)$. $C_5$ também põe um bloco em cima
+        de $c$, mas só precisa de espaço no slot $s_1$ ($\livre(s_1,1)$), que $C_4$
+        não apaga. Sem ameaça.
+  \item $C_5$ tira $b$ de $(5,0)$, que é o apoio de $a$ em $C_2$ (vínculo Início
+        $\to C_2$). Como $C_5$ precisa de $\clr(b)$, que só volta em $C_4$, ela já
+        fica depois de $C_2$. $C_5$ também apaga $\livre(s_1,1)$, que nenhuma ação
+        usa depois. Sem ameaça.
+  \item $C_6$ apaga $\livre(s_5,0)$, que nenhuma ação usa depois. Sem ameaça.
+  \item Os vínculos de $\clr(d)$ e de $c$ em $(0,0)$ não são ameaçados por nenhuma
+        ação, porque nenhuma ação põe um bloco em cima de $d$ e o bloco $c$ não se
+        move.
+\end{itemize}
+
+\paragraph{Conclusão.} As restrições $C_1\prec C_2$, $C_2\prec C_3$, $C_3\prec C_4$,
+$C_4\prec C_5$ e $C_5\prec C_6$ formam uma cadeia, então só existe uma linearização:
+$C_1, C_2, C_3, C_4, C_5, C_6$. Cada ação libera o que a próxima precisa. $C_1$
+descobre $a$. $C_2$ tira $a$ do caminho de $d$. $C_3$ descobre $c$. $C_4$ descobre
+$b$ e libera o espaço acima de $s_5$. $C_5$ libera $s_5$ na mesa. $C_6$ coloca $d$
+no lugar final.
+
+\subsubsection{Ordem parcial no SAT}
+Uma restrição de ordem parcial $\varphi_1\prec_P\varphi_2$
+(``$\varphi_1$ acontece antes de $\varphi_2$'') vira as cláusulas
+$\lnot\varphi_2(t)\lor\bigvee_{t'\le t}\varphi_1(t')$ para todo $t$. Esse é o grupo
+3.7 do código. Escolhemos uma restrição por cenário, tirada de um vínculo causal dos
+planos acima:
+\begin{center}\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+Cenário & Vínculo & $\varphi_1\prec_P\varphi_2$ & Resultado\\
+\midrule
+Sit.~1 & $A_3\to A_4$ & $d$ em $(2,0)$ $\prec_P$ $a$ em $(0,1)$ &
+  SAT com $H=4$; invertida: UNSAT para $H=3..8$\\
+Sit.~2 & $B_3\to B_4$ & $c$ em $(4,1)$ $\prec_P$ $a$ em $(4,2)$ &
+  SAT com $H=5$; invertida: mínimo passa a 7\\
+Sit.~3 & $C_5\to C_6$ & $b$ em $(1,1)$ $\prec_P$ $d$ em $(3,0)$ &
+  SAT com $H=6$; invertida: mínimo passa a 7\\
+\bottomrule
+\end{tabular}
+\end{center}
+Com a ordem certa, o plano ótimo continua existindo. Com a ordem invertida ele deixa
+de existir: na Situação 1 não achamos nenhum plano (testamos $H$ até 8), e nas
+Situações 2 e 3 o menor plano passa a ter 7 ações. Isso mostra que as ordens que
+achamos na análise manual são mesmo obrigatórias.
+
+% =====================================================================
+\section{Codificação CNF}
+\label{sec:cnf}
+% =====================================================================
+Para passar da LPO para a lógica proposicional, criamos uma variável
+verdadeiro/falso para cada predicado e cada combinação possível de valores (bloco,
+posição, nível e instante). As regras viram cláusulas, que são um ``ou'' de
+variáveis ou de negações de variáveis.
+
+\subsection{Variáveis proposicionais}
+\begin{center}\small
+\begin{tabular}{@{}lllrrr@{}}
+\toprule
+Variável & Índices & Tipo & Sit.~1 & Sit.~2 & Sit.~3\\
+ & & & $H=4$ & $H=5$ & $H=6$\\
+\midrule
+$\at(b,p,t)$ & $p\in[0,6-\ell(b)]$, $t\in[0,H]$ & básico & 105 & 126 & 147\\
+$\lev(b,l,t)$ & $l\in[0,3]$, $t\in[0,H]$ & básico & 80 & 96 & 112\\
+$\clr(b,t)$ & $t\in[0,H]$ & calculado & 20 & 24 & 28\\
+$\cov(b,s,l,t)$ & $s\in[0,5]$, $l\in[0,3]$, $t\in[0,H]$ & auxiliar & 480 & 576 & 672\\
+$\mv(b,y,p,t)$ & $y\in\mathcal{B}\cup\{\mesaT\}$, $y\neq b$, $t\in[0,H-1]$ & ação & 336 & 420 & 504\\
+$\varphi(\cdot,t)$ & $t\in[0,H]$ & aux.\ (ordem parcial) & 5 & 6 & 7\\
+$\esp(b,s,t)$ & $s\in[0,5]$, $t\in[0,H]$ & calculado (novo) & 120 & 144 & 168\\
+\midrule
+\multicolumn{3}{@{}l}{Total} & 1146 & 1392 & 1638\\
+\bottomrule
+\end{tabular}
+\end{center}
+Usamos a variável auxiliar $\cov$ para as cláusulas ficarem mais curtas. Com ela, as regras de exclusão, de estabilidade e de
+\emph{clear} são escritas como ``o slot está ocupado'', sem precisar combinar $\at$
+e $\lev$ toda vez.
+
+\subsection{Grupos de cláusulas}
+\begin{center}\small
+\renewcommand{\arraystretch}{1.2}
+\begin{tabularx}{\textwidth}{@{}l X r@{}}
+\toprule
+Grupo & Formato das cláusulas & Qtde\\
+\midrule
+3.1 Estado inicial & unitárias $\at(b,p,0)$, $\lev(b,l,0)$ & 8\\
+3.2 Meta & unitárias $\at(b,p,H)$, $\lev(b,l,H)$ & 8\\
+3.3 (A) Posição & $\bigvee_p\at(b,p,t)$;\ $\lnot\at(b,p_1,t)\lor\lnot\at(b,p_2,t)$ & 250\\
+3.3 (B) Nível & $\bigvee_l\lev(b,l,t)$;\ $\lnot\lev(b,l_1,t)\lor\lnot\lev(b,l_2,t)$ & 140\\
+3.3 (Z) $\cov$ & $\lnot\cov\lor\lev(b,l,t)$;\ $\lnot\cov\lor\bigvee_{p\ni s}\at(b,p,t)$;\
+  $\lnot\at(b,p,t)\lor\lnot\lev(b,l,t)\lor\cov(b,s,l,t)$ & 1640\\
+3.3 (C) Exclusão & $\lnot\cov(b_1,s,l,t)\lor\lnot\cov(b_2,s,l,t)$ & 720\\
+3.3 (D) Estabilidade & para todo $S\subseteq\spn(b,p)$ com $|S|=\ell(b)-\lceil\ell(b)/2\rceil+1$:
+  $\lnot\at(b,p,t)\lor\lnot\lev(b,l,t)\lor\bigvee_{s\in S,\,b'\neq b}\cov(b',s,l-1,t)$ & 435\\
+3.3 (Y) $\esp$ (novo) & $\lnot\esp(b,s,t)\lor\bigvee_l\cov(b,s,l,t)$;\
+  $\lnot\esp\lor\lnot\cov(b,s,l,t)\lor\lnot\cov(b',s,l{+}1,t)$;\
+  $\lnot\cov(b,s,l,t)\lor\esp\lor\bigvee_{b'}\cov(b',s,l{+}1,t)$ & 1680\\
+3.3 (E) Clear & $\lnot\clr(b,t)\lor\lnot\cov(b,s,l,t)\lor\esp(b,s,t)$;\
+  $\lnot\at(b,p,t)\lor\clr(b,t)\lor\bigvee_{s\in\spn(b,p)}\lnot\esp(b,s,t)$ & 585\\
+3.4 (G) Pré-condições & G1 $\lnot\mv\lor\clr(b,t)$;
+  G2 $\lnot\mv\lor\lnot\at(y,q,t)\lor\lnot\lev(y,l,t)\lor\esp(y,s,t)\lor\cov(b,s,l{+}1,t)$;
+  G3 destino diferente do lugar atual; G4 $\lnot\mv\lor\bigvee_{q}\at(y,q,t)$
+  (spans sobrepostos); G5+G6 $\lnot\mv\,[\lor\lnot\lev(y,l,t)]\lor\lnot\cov(b',s,l',t)$ para
+  $l'\ge l^\ast$; G7 $\lnot\mv\lor\lnot\lev(y,3,t)$ & 12384\\
+3.4 (F) Efeitos & F1 $\lnot\mv\lor\at(b,p,t{+}1)$; F2 $\lnot\mv\lor\lnot\lev(y,l,t)\lor\lev(b,l{+}1,t{+}1)$;
+  F3 $\lnot\mv\lor\lnot\clr(y,t{+}1)$ & 1428\\
+3.5 Frame axioms & $\at(b,p,t)\lor\lnot\at(b,p,t{+}1)\lor\bigvee \mv(b,\cdot,\cdot,t)$ e o
+  simétrico; idem para $\lev$ & 296\\
+3.6 Ação única & $\bigvee \mv(\cdot,\cdot,\cdot,t)$;\ $\lnot \mv_i\lor\lnot \mv_j$ & 13948\\
+3.7 Ordem parcial & $\lnot\varphi_2(t)\lor\bigvee_{t'\le t}\varphi_1(t')$ (+ definição de $\varphi_1$) & 20\\
+\midrule
+\multicolumn{2}{@{}l}{Total} & 33542\\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\noindent Observações sobre a tabela:
+\begin{itemize}
+  \item Na estabilidade precisamos dizer ``pelo menos $k$ de $n$ slots estão
+        apoiados''. Em cláusulas isso é escrito como ``em todo grupo de $n-k+1$
+        slots, pelo menos um está apoiado''. Para $d$ ($n=3$, $k=2$) isso dá 3
+        cláusulas para cada posição e nível.
+  \item O efeito ``$b$ deixa a posição antiga'' (F4) não precisa de cláusula
+        própria, porque a unicidade (A) já garante isso.
+  \item $\clr$ e $\esp$ não precisam de \emph{frame axiom}. Os grupos (Y) e (E)
+        calculam os dois de novo em cada instante, a partir de $\cov$.
+  \item Em G2, o literal $\cov(b,s,l{+}1,t)$ serve para não contar o próprio $b$.
+        Num movimento lateral em cima do mesmo apoio, o slot que o próprio $b$
+        ocupa conta como livre.
+\end{itemize}
+
+\paragraph{Quantidade de cláusulas por cenário.} A tabela acima mostra a Situação 1. Nos
+três cenários os tipos de cláusula são os mesmos. O que muda é o horizonte $H$:
+\begin{center}\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Grupo & Sit.~1 ($H=4$) & Sit.~2 ($H=5$) & Sit.~3 ($H=6$)\\
+\midrule
+3.1 Estado inicial / 3.2 Meta & 8 / 8 & 8 / 8 & 8 / 8\\
+3.3 (A) Posição / (B) Nível & 250 / 140 & 300 / 168 & 350 / 196\\
+3.3 (Z) $\cov$ & 1640 & 1968 & 2296\\
+3.3 (C) Exclusão & 720 & 864 & 1008\\
+3.3 (D) Estabilidade & 435 & 522 & 609\\
+3.3 (Y) $\esp$ & 1680 & 2016 & 2352\\
+3.3 (E) Clear & 585 & 702 & 819\\
+3.4 (G) Pré-condições & 12384 & 15480 & 18576\\
+3.4 (F) Efeitos & 1428 & 1785 & 2142\\
+3.5 Frame axioms & 296 & 370 & 444\\
+3.6 Ação única & 13948 & 17435 & 20922\\
+3.7 Ordem parcial & 20 & 24 & 28\\
+\midrule
+Total & 33542 & 41650 & 49758\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{A relação \texorpdfstring{$\on$}{on} não vira variável}
+A relação $\on(b,y,t)$ não é uma variável da CNF. O \texttt{interpretar.py}
+calcula o $\on$ depois, a partir de $\at$, $\lev$ e da sobreposição dos spans
+(axioma A6).
+
+% =====================================================================
+\section{Exemplos dos 3 cenários codificados para CNF em LP}
+% =====================================================================
+\subsection{Situação 1: \texorpdfstring{$S_0$}{S0} e meta \texorpdfstring{$S_{f4}$}{Sf4}}
+\begin{center}\small
+\begin{tabular}{@{}ll|ll@{}}
+\toprule
+\multicolumn{2}{c|}{$S_0$ ($t=0$)} & \multicolumn{2}{c}{$S_{f4}$ ($t=H=4$)}\\
+Fórmula & DIMACS & Fórmula & DIMACS\\
+\midrule
+$\at(c,0,0)\land\lev(c,0,0)$ & \texttt{13 0}, \texttt{114 0} & $\at(c,0,4)\land\lev(c,0,4)$ & \texttt{97 0}, \texttt{178 0}\\
+$\at(a,3,0)\land\lev(a,0,0)$ & \texttt{4 0}, \texttt{106 0} & $\at(a,0,4)\land\lev(a,1,4)$ & \texttt{85 0}, \texttt{171 0}\\
+$\at(b,5,0)\land\lev(b,0,0)$ & \texttt{12 0}, \texttt{110 0} & $\at(d,2,4)\land\lev(d,0,4)$ & \texttt{104 0}, \texttt{182 0}\\
+$\at(d,3,0)\land\lev(d,1,0)$ & \texttt{21 0}, \texttt{119 0} & $\at(b,5,4)\land\lev(b,0,4)$ & \texttt{96 0}, \texttt{174 0}\\
+\bottomrule
+\end{tabular}
+\end{center}
+Relações $\on$ em $S_0$: $\on(c,\mesaT)$, $\on(a,\mesaT)$, $\on(b,\mesaT)$,
+$\on(d,a)\land\on(d,b)$ (ponte). Em $S_{f4}$: $\on(c,\mesaT)$, $\on(d,\mesaT)$,
+$\on(b,\mesaT)$, $\on(a,c)$.
+
+\subsection{Situação 1: exemplos de cláusulas geradas}
+Algumas cláusulas reais do arquivo \texttt{trab01\_blocos2SAT.cnf}, com a
+tradução pelo \texttt{.map} (id 762 = $\mv(d,c,0,0)$, a primeira ação do plano):
+\begin{center}\footnotesize
+\begin{tabularx}{\textwidth}{@{}l X l@{}}
+\toprule
+Grupo & Cláusula & DIMACS\\
+\midrule
+G1 & $\lnot \mv(d,c,0,0)\lor\clr(d,0)$ & \texttt{-762 189 0}\\
+G4 & $\lnot \mv(d,c,0,0)\lor\at(c,0,0)\lor\at(c,1,0)\lor\at(c,2,0)$ & \texttt{-762 13 14 15 0}\\
+G5 & $\lnot \mv(d,c,0,0)\lor\lnot\lev(c,0,0)\lor\lnot\cov(a,s_2,1,0)$ & \texttt{-762 -114 -214 0}\\
+F1 & $\lnot \mv(d,c,0,0)\lor\at(d,0,1)$ & \texttt{-762 39 0}\\
+F2 & $\lnot \mv(d,c,0,0)\lor\lnot\lev(c,0,0)\lor\lev(d,1,1)$ & \texttt{-762 -114 135 0}\\
+F3 & $\lnot \mv(d,c,0,0)\lor\lnot\clr(c,1)$ & \texttt{-762 -192 0}\\
+(C) & $\lnot\cov(a,s_3,0,0)\lor\lnot\cov(d,s_3,0,0)$ & \texttt{-209 -281 0}\\
+(D) & $\lnot\at(d,0,1)\lor\lnot\lev(d,1,1)\lor\cov(a,s_0,0,1)\lor\cov(b,s_0,0,1)\lor\cov(c,s_0,0,1)\lor\cov(a,s_1,0,1)\lor\cov(b,s_1,0,1)\lor\cov(c,s_1,0,1)$ & \texttt{-39 -135 302 326 350 303 327 351 0}\\
+G2 & $\lnot \mv(d,c,0,0)\lor\lnot\at(c,0,0)\lor\lnot\lev(c,0,0)\lor\esp(c,s_0,0)\lor\cov(d,s_0,1,0)$ & \texttt{-762 -13 -114 1039 284 0}\\
+(Y) & $\lnot\esp(a,s_3,0)\lor\lnot\cov(a,s_3,0,0)\lor\lnot\cov(d,s_3,1,0)$ & \texttt{-1030 -209 -287 0}\\
+(Y) & $\lnot\cov(a,s_3,0,0)\lor\esp(a,s_3,0)\lor\cov(b,s_3,1,0)\lor\cov(c,s_3,1,0)\lor\cov(d,s_3,1,0)$ & \texttt{-209 1030 239 263 287 0}\\
+(E) & $\lnot\clr(a,0)\lor\lnot\cov(a,s_3,0,0)\lor\esp(a,s_3,0)$ & \texttt{-186 -209 1030 0}\\
+(E) & $\lnot\at(a,3,0)\lor\clr(a,0)\lor\lnot\esp(a,s_3,0)$ & \texttt{-4 186 -1030 0}\\
+3.7 & $\lnot\at(a,0,2)\lor\lnot\lev(a,1,2)\lor\varphi(d,2,0,0)\lor\varphi(d,2,0,1)\lor\varphi(d,2,0,2)$ & \texttt{-43 -139 1022 1023 1024 0}\\
+\bottomrule
+\end{tabularx}
+\end{center}
+As duas cláusulas (Y) definem $\esp(a,s_3,0)$. Em $S_0$ o bloco $d$ cobre $s_3$ no
+nível 1, então $\esp(a,s_3,0)$ é falso. Pela primeira cláusula (E), $\clr(a,0)$
+também é falso. A cláusula (D) do exemplo diz que, se $d$ está no nível 1 começando
+no ponto 0, então pelo menos um dos slots $s_0$ e $s_1$ do nível 0 está ocupado.
+Existem mais duas cláusulas iguais a essa, para os pares $\{s_0,s_2\}$ e
+$\{s_1,s_2\}$. As três juntas garantem pelo menos 2 slots apoiados.
+
+\subsection{Situação 2: \texorpdfstring{$S_0$}{S0} e meta \texorpdfstring{$S_5$}{S5}}
+\begin{center}\small
+\begin{tabular}{@{}ll|ll@{}}
+\toprule
+\multicolumn{2}{c|}{$S_0$ ($t=0$)} & \multicolumn{2}{c}{$S_5$ ($t=H=5$)}\\
+Fórmula & DIMACS & Fórmula & DIMACS\\
+\midrule
+$\at(c,0,0)\land\lev(c,0,0)$ & \texttt{13 0}, \texttt{135 0} & $\at(d,3,5)\land\lev(d,0,5)$ & \texttt{126 0}, \texttt{219 0}\\
+$\at(d,3,0)\land\lev(d,0,0)$ & \texttt{21 0}, \texttt{139 0} & $\at(c,4,5)\land\lev(c,1,5)$ & \texttt{122 0}, \texttt{216 0}\\
+$\at(a,0,0)\land\lev(a,1,0)$ & \texttt{1 0}, \texttt{128 0} & $\at(a,4,5)\land\lev(a,2,5)$ & \texttt{110 0}, \texttt{209 0}\\
+$\at(b,1,0)\land\lev(b,1,0)$ & \texttt{8 0}, \texttt{132 0} & $\at(b,5,5)\land\lev(b,2,5)$ & \texttt{117 0}, \texttt{213 0}\\
+\bottomrule
+\end{tabular}
+\end{center}
+Relações $\on$ em $S_0$: $\on(c,\mesaT)$, $\on(d,\mesaT)$, $\on(a,c)$, $\on(b,c)$
+(dois blocos lado a lado sobre $c$). Em $S_5$: $\on(d,\mesaT)$, $\on(c,d)$,
+$\on(a,c)$, $\on(b,c)$.
+
+\subsection{Situação 3: \texorpdfstring{$S_0$}{S0} e meta \texorpdfstring{$S_7$}{S7}}
+\begin{center}\small
+\begin{tabular}{@{}ll|ll@{}}
+\toprule
+\multicolumn{2}{c|}{$S_0$ ($t=0$)} & \multicolumn{2}{c}{$S_7$ ($t=H=6$)}\\
+Fórmula & DIMACS & Fórmula & DIMACS\\
+\midrule
+$\at(c,0,0)\land\lev(c,0,0)$ & \texttt{13 0}, \texttt{156 0} & $\at(c,0,6)\land\lev(c,0,6)$ & \texttt{139 0}, \texttt{252 0}\\
+$\at(a,3,0)\land\lev(a,0,0)$ & \texttt{4 0}, \texttt{148 0} & $\at(a,0,6)\land\lev(a,1,6)$ & \texttt{127 0}, \texttt{245 0}\\
+$\at(b,5,0)\land\lev(b,0,0)$ & \texttt{12 0}, \texttt{152 0} & $\at(b,1,6)\land\lev(b,1,6)$ & \texttt{134 0}, \texttt{249 0}\\
+$\at(d,3,0)\land\lev(d,1,0)$ & \texttt{21 0}, \texttt{161 0} & $\at(d,3,6)\land\lev(d,0,6)$ & \texttt{147 0}, \texttt{256 0}\\
+\bottomrule
+\end{tabular}
+\end{center}
+Os ids mudam de um cenário para outro porque o número de instantes muda. Por isso
+cada cenário tem o seu próprio \texttt{.map}.
+
+\paragraph{O predicado novo nas cláusulas.} A ação $C_5$ = $\mv(b,c,1,4)$ (id 1327) coloca
+$b$ ao lado de $a$, em cima de $c$. As cláusulas geradas para ela incluem:
+\begin{center}\footnotesize
+\begin{tabular}{@{}lll@{}}
+\toprule
+Grupo & Cláusula & DIMACS\\
+\midrule
+G1 & $\lnot \mv(b,c,1,4)\lor\clr(b,4)$ & \texttt{-1327 277 0}\\
+G2 & $\lnot \mv(b,c,1,4)\lor\lnot\at(c,0,4)\lor\lnot\lev(c,0,4)\lor\esp(c,s_1,4)\lor\cov(b,s_1,1,4)$ & \texttt{-1327 -97 -220 1580 703 0}\\
+G4 & $\lnot \mv(b,c,1,4)\lor\at(c,0,4)\lor\at(c,1,4)$ & \texttt{-1327 97 98 0}\\
+G5 & $\lnot \mv(b,c,1,4)\lor\lnot\lev(c,0,4)\lor\lnot\cov(a,s_1,1,4)$ & \texttt{-1327 -220 -679 0}\\
+F1 & $\lnot \mv(b,c,1,4)\lor\at(b,1,5)$ & \texttt{-1327 113 0}\\
+F3 & $\lnot \mv(b,c,1,4)\lor\lnot\clr(c,5)$ & \texttt{-1327 -282 0}\\
+\bottomrule
+\end{tabular}
+\end{center}
+A cláusula G2 exige $\esp(c,s_1,4)$ (id 1580), ou seja, espaço livre em cima de $c$
+só no slot $s_1$, que é onde $b$ vai pousar. No instante 4, $\clr(c,4)$ (id 278) é
+falso, porque $a$ está em cima de $c$ no slot $s_0$. Já $\esp(c,s_1,4)$ é
+verdadeiro. Com a pré-condição clássica $\clr(y)$ a cláusula seria
+$\lnot \mv(b,c,1,4)\lor\clr(c,4)$, e a Situação 3 daria UNSAT.
+
+% =====================================================================
+\section{Mapeamento: Descrição Formal \texorpdfstring{$\to$}{->} Código}
+% =====================================================================
+\begin{center}\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+Regra formal & Código (\texttt{bw2cnf\_var.py})\\
+\midrule
+Blocos e comprimentos & \texttt{BLOCKS = \{'a':1, 'b':1, 'c':2, 'd':3\}}\\
+Pontos / slots / níveis & \texttt{MAX\_POINT = 6}, \texttt{SLOTS}, \texttt{MAX\_LEVEL = 3}\\
+Posições válidas & \texttt{valid\_positions(L) = range(MAX\_POINT - L + 1)}\\
+$\spn(b,p)$, $\ov$ & \texttt{span(b, p)}, \texttt{spans\_overlap(b1, p1, b2, p2)}\\
+$\at,\lev,\clr,\cov,\esp,\mv$ & dicionários \texttt{at, lev, clr, cov, esp, mv} com \texttt{f.new\_var(nome)}\\
+Cenários ($S_0$, meta, $H$) & \texttt{CENARIOS[N]} com \texttt{INITIAL}, \texttt{GOAL}, \texttt{HORIZON}; \texttt{-{}-cenario N}\\
+Estado inicial / meta & blocos \texttt{\# 3.1 ESTADO INICIAL}, \texttt{\# 3.2 META}\\
+A1 unicidade & \texttt{\# 3.3 (A)}, \texttt{\# 3.3 (B)}\\
+A2 definição de $\cov$ & \texttt{\# 3.3 (Z)}\\
+A3 exclusão & \texttt{\# 3.3 (C)}\\
+A7 estabilidade & \texttt{\# 3.3 (D)}\\
+A5a $\esp$ (predicado novo) & dicionário \texttt{esp}, \texttt{\# 3.3 (Y)}\\
+A5b clear & \texttt{\# 3.3 (E)}\\
+Pré-condições P1--P6 & \texttt{\# 3.4 (G)} (G1, G2, G3, G4, G5+G6, G7)\\
+Efeitos (ADD/DEL) & \texttt{\# 3.4 (F)} (F1--F3; F4 pela unicidade)\\
+Frame axioms & \texttt{\# 3.5}\\
+Ação única por passo & \texttt{\# 3.6}\\
+Ordem parcial $\varphi_1\prec_P\varphi_2$ & \texttt{ORDEM\_PARCIAL}, \texttt{\# 3.7}\\
+A6 relação $\on$ (calculada depois) & \texttt{interpretar.py}: \texttt{derivar\_on}\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+% =====================================================================
+\section{Execução Passo a Passo}
+\label{sec:exec}
+% =====================================================================
+\paragraph{1. Os cenários} ficam no dicionário \texttt{CENARIOS} do
+\texttt{bw2cnf\_var.py} e são escolhidos com \texttt{-{}-cenario N}:
+\begin{lstlisting}
+CENARIOS = {
+  1: dict(INITIAL={'c': (0,0), 'a': (3,0), 'b': (5,0), 'd': (3,1)},   # S0
+          GOAL   ={'c': (0,0), 'a': (0,1), 'd': (2,0), 'b': (5,0)},   # Sf4
+          HORIZON=4, ORDEM_PARCIAL=[(('d',2,0), ('a',0,1))]),
+  2: dict(INITIAL={'c': (0,0), 'd': (3,0), 'a': (0,1), 'b': (1,1)},   # S0
+          GOAL   ={'d': (3,0), 'c': (4,1), 'a': (4,2), 'b': (5,2)},   # S5
+          HORIZON=5, ORDEM_PARCIAL=[(('c',4,1), ('a',4,2))]),
+  3: dict(INITIAL={'c': (0,0), 'a': (3,0), 'b': (5,0), 'd': (3,1)},   # S0
+          GOAL   ={'c': (0,0), 'a': (0,1), 'b': (1,1), 'd': (3,0)},   # S7
+          HORIZON=6, ORDEM_PARCIAL=[(('b',1,1), ('d',3,0))]),
+}
+\end{lstlisting}
+
+\paragraph{2. Rodar os três cenários.} Para cada $N$, dentro da pasta \texttt{cenarioN}:
+\begin{lstlisting}
+$ python3 ../bw2cnf_var.py --cenario N  # gera .cnf e .map
+$ minisat trab01_blocos2SAT.cnf resultadoN.txt
+$ python3 ../interpretar.py resultadoN.txt --verbose
+\end{lstlisting}
+
+\paragraph{3. Busca do menor horizonte e tamanho das fórmulas.} O horizonte de cada
+cenário é o valor \texttt{HORIZON} no dicionário \texttt{CENARIOS}. Para achar o
+menor $H$, começamos com \texttt{HORIZON=0} e fomos aumentando de um em um. A cada
+valor geramos a CNF e rodamos o MiniSat, até a primeira resposta SAT. Na Situação 1,
+por exemplo, com \texttt{HORIZON=3} o MiniSat responde \texttt{UNSATISFIABLE} e com
+\texttt{HORIZON=4} responde \texttt{SATISFIABLE}. Os resultados foram:
+\begin{center}\small
+\begin{tabular}{@{}lccrrr@{}}
+\toprule
+Cenário & UNSAT para & SAT com & Variáveis & Cláusulas & Tempo do MiniSat\\
+\midrule
+Sit.~1 & $H=0..3$ & $H=4$ & 1146 & 33542 & 0{,}0262 s\\
+Sit.~2 & $H=0..4$ & $H=5$ & 1392 & 41650 & 0{,}0551 s\\
+Sit.~3 & $H=0..5$ & $H=6$ & 1638 & 49758 & 0{,}0668 s\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{4. Saída do interpretador.} Situação 1:
+\begin{lstlisting}
+PLANO ENCONTRADO (4 acoes):
+  1. t=0: mover bloco 'd' para CIMA de 'c' em p=0
+  2. t=1: mover bloco 'a' para CIMA de 'b' em p=5
+  3. t=2: mover bloco 'd' para a MESA em p=2
+  4. t=3: mover bloco 'a' para CIMA de 'c' em p=0
+\end{lstlisting}
+Situação 2:
+\begin{lstlisting}
+PLANO ENCONTRADO (5 acoes):
+  1. t=0: mover bloco 'b' para CIMA de 'd' em p=3
+  2. t=1: mover bloco 'a' para a MESA em p=2
+  3. t=2: mover bloco 'c' para CIMA de 'd' em p=4
+  4. t=3: mover bloco 'a' para CIMA de 'c' em p=4
+  5. t=4: mover bloco 'b' para CIMA de 'c' em p=5
+\end{lstlisting}
+Situação 3:
+\begin{lstlisting}
+PLANO ENCONTRADO (6 acoes):
+  1. t=0: mover bloco 'd' para CIMA de 'c' em p=0
+  2. t=1: mover bloco 'a' para CIMA de 'b' em p=5
+  3. t=2: mover bloco 'd' para a MESA em p=2
+  4. t=3: mover bloco 'a' para CIMA de 'c' em p=0
+  5. t=4: mover bloco 'b' para CIMA de 'c' em p=1
+  6. t=5: mover bloco 'd' para a MESA em p=3
+\end{lstlisting}
+A saída completa, com o desenho de cada estado, está em
+\texttt{cenarioN/plano\_interpretado.txt}.
+
+% =====================================================================
+\section{Interpretação da Saída do SAT Solver}
+\label{sec:interp}
+% =====================================================================
+\subsection{De inteiros para o plano}
+Vamos explicar usando a Situação 1. Os outros cenários funcionam do mesmo jeito.
+O \texttt{resultado1.txt} tem duas linhas. A primeira é \texttt{SAT}. A segunda tem
+o valor de cada uma das 1146 variáveis (número positivo quer dizer verdadeiro e
+negativo quer dizer falso) e termina em \texttt{0}:
+\begin{lstlisting}
+SAT
+-1 -2 -3 4 -5 -6 -7 -8 -9 -10 -11 12 13 -14 ... 0
+\end{lstlisting}
+Só 120 das 1146 variáveis são verdadeiras. O MiniSat só conhece números, então
+usamos o \texttt{.map} para saber o que cada número significa. O
+\texttt{interpretar.py} faz três coisas:
+\begin{enumerate}
+  \item lê o mapa, por exemplo \texttt{4} $\mapsto$ \texttt{at(a,3,0)} e
+        \texttt{762} $\mapsto$ \texttt{move(d,c,0,0)};
+  \item fica só com os números positivos;
+  \item separa as ações e ordena pelo instante $t$ (o último argumento). As ações
+        verdadeiras são \texttt{762, 775, 936, 944} $\mapsto$
+        \texttt{move(d,c,0,0)}, \texttt{move(a,b,5,1)}, \texttt{move(d,T,2,2)},
+        \texttt{move(a,c,0,3)}.
+\end{enumerate}
+Com as variáveis $\at(b,p,t)$ e $\lev(b,l,t)$ verdadeiras dá para montar o estado de
+cada instante, e o $\on$ é calculado a partir delas. Com a opção
+\texttt{-{}-verbose} o programa desenha cada estado:
+\begin{lstlisting}
+  t=0 (estado inicial)              t=4  depois de: mover 'a' para CIMA de 'c'
+    nivel 1 | . . . d d d             nivel 1 | a . . . . .
+    nivel 0 | c c . a . b             nivel 0 | c c d d d b
+       slots  0 1 2 3 4 5                slots  0 1 2 3 4 5
+  (d esta sobre: a, b  -> ponte)      a esta sobre: c; b, c, d na MESA
+\end{lstlisting}
+
+Nos outros cenários, as ações verdadeiras são:
+\begin{itemize}
+  \item Situação 2 (139 de 1392 variáveis verdadeiras): \texttt{862, 927, 1053, 1085, 1194}
+        $\mapsto$ \texttt{move(b,d,3,0)}, \texttt{move(a,T,2,1)}, \texttt{move(c,d,4,2)},
+        \texttt{move(a,c,4,3)}, \texttt{move(b,c,5,4)};
+  \item Situação 3 (168 de 1638): \texttt{1036, 1049, 1210, 1218, 1327, 1463}
+        $\mapsto$ \texttt{move(d,c,0,0)}, \texttt{move(a,b,5,1)}, \texttt{move(d,T,2,2)},
+        \texttt{move(a,c,0,3)}, \texttt{move(b,c,1,4)}, \texttt{move(d,T,3,5)}.
+\end{itemize}
+
+\paragraph{Conferindo pelo terminal.} Dá para fazer a mesma tradução sem o
+\texttt{interpretar.py}, só com \texttt{grep} e \texttt{awk}, do mesmo jeito que no
+mundo dos blocos clássico. Como as ações aparecem no \texttt{.map} com o nome
+\texttt{move}, basta filtrar por essa palavra:
+\begin{lstlisting}
+$ grep -E "^(762|775|936|944) " trab01_blocos2SAT.map
+762 move(d,c,0,0)
+775 move(a,b,5,1)
+936 move(d,T,2,2)
+944 move(a,c,0,3)
+
+$ awk 'NR==2 {for(i=1;i<NF;i++) if($i>0) print $i}' resultado1.txt > ids.txt
+$ while read id; do grep "^$id " trab01_blocos2SAT.map; done < ids.txt | grep move
+\end{lstlisting}
+O segundo comando pega todos os inteiros positivos da linha 2 do resultado, procura
+cada um no mapa e fica só com as linhas de ação. A saída é a mesma do primeiro.
+
+\subsection{Comparação: plano manual \texorpdfstring{$\times$}{x} plano do SAT}
+\begin{center}\small
+\begin{tabular}{@{}clll@{}}
+\toprule
+Passo & Situação 1 (manual = SAT) & Situação 2: manual & Situação 2: SAT\\
+\midrule
+1 & move(d,c,0) & move(b,T,2) & move(b,d,3)\\
+2 & move(a,b,5) & move(a,b,2) & move(a,T,2)\\
+3 & move(d,T,2) & move(c,d,4) & move(c,d,4)\\
+4 & move(a,c,0) & move(a,c,4) & move(a,c,4)\\
+5 & & move(b,c,5) & move(b,c,5)\\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{itemize}
+  \item Situação 1: o plano manual e o do SAT são iguais.
+  \item Situação 2: os planos são diferentes, mas os dois têm 5 ações. Existe mais
+        de um plano com 5 ações, e o SAT devolve qualquer um que satisfaça a
+        fórmula. O SAT guardou $b$ em
+        cima de $d$ e $a$ na mesa. O plano manual guarda $b$ na mesa e $a$ em cima
+        de $b$. O plano do SAT segue a mesma ideia do plano alternativo da
+        Figura~\ref{fig:pop2}, só que com os lugares temporários de $a$ e $b$
+        trocados. Também testamos obrigar o SAT a usar as 5 ações do plano manual,
+        colocando cada uma como cláusula unitária. A fórmula continuou satisfatível,
+        então o plano manual também é aceito.
+  \item Situação 3: o plano manual e o do SAT são iguais. As ações 1 a 4 são as mesmas da Situação 1.
+\end{itemize}
+
+\subsection{Resumo}
+\begin{itemize}
+  \item Os menores planos têm 4, 5 e 6 ações (Situações 1, 2 e 3). Em cada caso,
+        com uma ação a menos a fórmula é UNSAT.
+  \item Na ordem parcial, os planos das Situações 1 e 3 são cadeias. Na Situação 2
+        o plano da figura também é uma cadeia, por causa de uma ameaça, mas existe
+        um plano alternativo com 4 linearizações.
+  \item O predicado novo $\esp(y,s,t)$ foi necessário. Com o $\clr(y)$ do mundo clássico, as
+        metas das Situações 2 e 3 não podem ser alcançadas.
+\end{itemize}
+
+\begin{thebibliography}{9}
+\bibitem{rn} S. Russell, P. Norvig. \emph{Inteligência Artificial: Uma Abordagem
+  Moderna}. Capítulos de planejamento clássico e planejamento de ordem parcial.
+\bibitem{bratko} I. Bratko. \emph{Prolog Programming for Artificial Intelligence}.
+  Capítulo de planejamento.
+\bibitem{ks} H. Kautz, B. Selman. Planning as Satisfiability. \emph{ECAI}, 1992.
+\bibitem{minisat} N. Eén, N. Sörensson. An Extensible SAT-solver. \emph{SAT}, 2003.
+\end{thebibliography}
+\end{document}

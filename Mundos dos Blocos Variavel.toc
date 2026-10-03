@@ -1,0 +1,55 @@
+\babel@toc {brazil}{}\relax 
+\contentsline {section}{\numberline {1}Introdução ao Problema}{2}{section.1}%
+\contentsline {paragraph}{O que foi resolvido.}{2}{section*.2}%
+\contentsline {section}{\numberline {2}Descrição Formal do Mundo dos Blocos de Tamanho Variado}{3}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Domínio}{3}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Predicados e axiomas}{3}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}A ação $\mathit {move}(b,y,p)$}{4}{subsection.2.3}%
+\contentsline {paragraph}{Pré-condições.}{4}{section*.20}%
+\contentsline {paragraph}{Efeitos.}{4}{section*.21}%
+\contentsline {subsection}{\numberline {2.4}Elementos novos e as ações associadas}{5}{subsection.2.4}%
+\contentsline {subsection}{\numberline {2.5}Ajustes em relação ao mundo clássico}{5}{subsection.2.5}%
+\contentsline {paragraph}{(i) Um predicado novo no lugar de $\mathit {clr}(y)$.}{5}{section*.22}%
+\contentsline {paragraph}{(ii) Regra da sombra.}{6}{section*.23}%
+\contentsline {paragraph}{Conferência.}{6}{section*.24}%
+\contentsline {subsection}{\numberline {2.6}Execução manual}{6}{subsection.2.6}%
+\contentsline {subsubsection}{\numberline {2.6.1}Situação 1: $S_0 \to S_{f4}$}{6}{subsubsection.2.6.1}%
+\contentsline {paragraph}{Por que 4 ações é o mínimo.}{7}{section*.27}%
+\contentsline {subsubsection}{\numberline {2.6.2}Situação 2: $S_0 \to S_5$}{7}{subsubsection.2.6.2}%
+\contentsline {paragraph}{Por que 5 ações é o mínimo.}{8}{section*.30}%
+\contentsline {subsubsection}{\numberline {2.6.3}Situação 3: $S_0 \to S_7$}{8}{subsubsection.2.6.3}%
+\contentsline {paragraph}{Por que 6 ações é o mínimo.}{10}{section*.33}%
+\contentsline {subsection}{\numberline {2.7}Ordem parcial}{11}{subsection.2.7}%
+\contentsline {subsubsection}{\numberline {2.7.1}Situação 1}{11}{subsubsection.2.7.1}%
+\contentsline {paragraph}{Análise de ameaças.}{12}{section*.36}%
+\contentsline {paragraph}{Um exemplo de ameaça sem solução.}{12}{section*.37}%
+\contentsline {paragraph}{Conclusão.}{12}{section*.38}%
+\contentsline {subsubsection}{\numberline {2.7.2}Situação 2}{13}{subsubsection.2.7.2}%
+\contentsline {paragraph}{Ameaça.}{13}{section*.40}%
+\contentsline {paragraph}{Um plano alternativo com mais de uma ordem possível.}{13}{section*.41}%
+\contentsline {subsubsection}{\numberline {2.7.3}Situação 3}{13}{subsubsection.2.7.3}%
+\contentsline {paragraph}{Análise de ameaças.}{15}{section*.45}%
+\contentsline {paragraph}{Conclusão.}{15}{section*.46}%
+\contentsline {subsubsection}{\numberline {2.7.4}Ordem parcial no SAT}{15}{subsubsection.2.7.4}%
+\contentsline {section}{\numberline {3}Codificação CNF}{15}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Variáveis proposicionais}{16}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Grupos de cláusulas}{16}{subsection.3.2}%
+\contentsline {paragraph}{Quantidade de cláusulas por cenário.}{17}{section*.47}%
+\contentsline {subsection}{\numberline {3.3}A relação $\mathit {on}$ não vira variável}{17}{subsection.3.3}%
+\contentsline {section}{\numberline {4}Exemplos dos 3 cenários codificados para CNF em LP}{17}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Situação 1: $S_0$ e meta $S_{f4}$}{17}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Situação 1: exemplos de cláusulas geradas}{17}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Situação 2: $S_0$ e meta $S_5$}{18}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}Situação 3: $S_0$ e meta $S_7$}{18}{subsection.4.4}%
+\contentsline {paragraph}{O predicado novo nas cláusulas.}{18}{section*.48}%
+\contentsline {section}{\numberline {5}Mapeamento: Descrição Formal $\to $ Código}{19}{section.5}%
+\contentsline {section}{\numberline {6}Execução Passo a Passo}{19}{section.6}%
+\contentsline {paragraph}{1. Os cenários}{19}{section*.49}%
+\contentsline {paragraph}{2. Rodar os três cenários.}{19}{section*.50}%
+\contentsline {paragraph}{3. Busca do menor horizonte e tamanho das fórmulas.}{19}{section*.51}%
+\contentsline {paragraph}{4. Saída do interpretador.}{20}{section*.52}%
+\contentsline {section}{\numberline {7}Interpretação da Saída do SAT Solver}{20}{section.7}%
+\contentsline {subsection}{\numberline {7.1}De inteiros para o plano}{20}{subsection.7.1}%
+\contentsline {paragraph}{Conferindo pelo terminal.}{21}{section*.53}%
+\contentsline {subsection}{\numberline {7.2}Comparação: plano manual $\times $ plano do SAT}{21}{subsection.7.2}%
+\contentsline {subsection}{\numberline {7.3}Resumo}{21}{subsection.7.3}%
