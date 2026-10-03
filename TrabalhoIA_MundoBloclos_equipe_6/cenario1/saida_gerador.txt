@@ -1,0 +1,3 @@
+Situacao 1: S0 -> Sf4
+Gerado: 1146 variaveis, 33542 clausulas (T=4)
+Arquivos: trab01_blocos2SAT.cnf, trab01_blocos2SAT.map
