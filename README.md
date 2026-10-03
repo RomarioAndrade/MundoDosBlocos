@@ -17,8 +17,8 @@ Resolvemos os três cenários do enunciado:
 | Situação 2 | S0 da Situação 2 | S5 | 5 ações |
 | Situação 3 | S0 da Situação 3 (igual ao S0 da Situação 1) | S7 | 6 ações |
 
-O relatório completo em LaTeX está em [`Mundos dos Blocos Variavel.tex`](<Mundos dos Blocos Variavel.tex>)
-(PDF: [`Mundos dos Blocos Variavel.pdf`](<Mundos dos Blocos Variavel.pdf>)).
+O relatório completo em LaTeX está em [`Mundo dos Blocos Variavel.tex`](<Mundo dos Blocos Variavel.tex>)
+(PDF: [`Mundo dos Blocos Variavel.pdf`](<Mundo dos Blocos Variavel.pdf>)).
 
 ## Estrutura da pasta
 
