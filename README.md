@@ -41,25 +41,6 @@ MundoDosBlocos/
     └── cenario3/                      Situação 3: S0 -> S7   (mesmos arquivos, resultado3.txt)
 ```
 
-## Como executar
-
-```bash
-sudo apt install minisat
-cd TrabalhoIA_MundoBloclos_equipe_6
-for N in 1 2 3; do
-  cd cenario$N
-  python3 ../bw2cnf_var.py --cenario $N         # gera .cnf e .map
-  minisat trab01_blocos2SAT.cnf resultado$N.txt
-  python3 ../interpretar.py resultado$N.txt --verbose
-  cd ..
-done
-```
-
-O número de passos de cada cenário é o `HORIZON` no dicionário `CENARIOS` do `bw2cnf_var.py`.
-Para conferir que o plano é o menor possível, basta diminuir esse valor em 1 (por exemplo, de
-4 para 3 na Situação 1), gerar a CNF de novo e rodar o miniSAT. Ele tem que responder
-UNSATISFIABLE. Depois é só voltar o valor original.
-
 ## 1. Introdução ao problema
 
 No Mundo dos Blocos clássico todos os blocos têm o mesmo tamanho. Aqui eles têm comprimentos
